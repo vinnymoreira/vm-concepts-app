@@ -1,13 +1,13 @@
 import React, { useEffect } from 'react';
 import { Routes, Route, useLocation, Navigate } from 'react-router-dom';
 import './css/style.css';
-import './charts/ChartjsConfig';
+// import './charts/ChartjsConfig';
 
 // Import pages
 import Dashboard from './pages/Dashboard';
 import Clients from './pages/Clients';
 import ClientDetail from './partials/clients/ClientDetail';
-import Finance from './pages/Finance';
+// import Finance from './pages/Finance';
 import Tasks from './pages/Tasks';
 
 // Import auth components
@@ -43,11 +43,11 @@ function App() {
             <ClientDetail />
           </ProtectedRoute>
         } />
-        <Route path="/finance" element={
+        {/* <Route path="/finance" element={
           <ProtectedRoute>
             <Finance />
           </ProtectedRoute>
-        } />
+        } /> */}
         <Route path="/tasks" element={
           <ProtectedRoute>
             <Tasks />
