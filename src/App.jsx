@@ -7,7 +7,6 @@ import './css/style.css';
 import Dashboard from './pages/Dashboard';
 import Clients from './pages/Clients';
 import ClientDetail from './partials/clients/ClientDetail';
-// import Finance from './pages/Finance';
 import Tasks from './pages/Tasks';
 
 // Import auth components
@@ -43,11 +42,6 @@ function App() {
             <ClientDetail />
           </ProtectedRoute>
         } />
-        {/* <Route path="/finance" element={
-          <ProtectedRoute>
-            <Finance />
-          </ProtectedRoute>
-        } /> */}
         <Route path="/tasks" element={
           <ProtectedRoute>
             <Tasks />
