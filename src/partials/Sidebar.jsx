@@ -224,6 +224,30 @@ function Sidebar({
                   </div>
                 </NavLink>
               </li>
+              {/* Fitness */}
+              <li className={`pl-4 pr-3 py-2 rounded-lg mb-0.5 last:mb-0 bg-[linear-gradient(135deg,var(--tw-gradient-stops))] ${pathname.includes("fitness") && "from-violet-500/[0.12] dark:from-violet-500/[0.24] to-violet-500/[0.04]"}`}>
+                <NavLink
+                  end
+                  to="/fitness"
+                  className={`block text-gray-800 dark:text-gray-100 truncate transition duration-150 ${
+                    pathname.includes("fitness") ? "" : "hover:text-gray-900 dark:hover:text-white"
+                  }`}
+                >
+                  <div className="flex items-center">
+                    <svg className={`shrink-0 fill-current ${pathname.includes('fitness') ? 'text-violet-500' : 'text-gray-400 dark:text-gray-500'}`} 
+                      xmlns="http://www.w3.org/2000/svg" 
+                      width="16" 
+                      height="16" 
+                      viewBox="0 0 16 16"
+                    >
+                      <path fillRule="evenodd" d="M6 2a.5.5 0 0 1 .47.33L10 12.036l1.43-4.836A.5.5 0 0 1 12 7h3.5a.5.5 0 0 1 0 1h-3.15l-1.88 6.365a.5.5 0 0 1-.94 0L6 3.964 4.57 8.8A.5.5 0 0 1 4 9H.5a.5.5 0 0 1 0-1h3.15l1.88-6.365A.5.5 0 0 1 6 2z"/>
+                    </svg>
+                    <span className="text-sm font-medium ml-4 lg:opacity-0 lg:sidebar-expanded:opacity-100 2xl:opacity-100 duration-200">
+                      Fitness
+                    </span>
+                  </div>
+                </NavLink>
+              </li>
               {/* Tasks */}
               <li className={`pl-4 pr-3 py-2 rounded-lg mb-0.5 last:mb-0 bg-[linear-gradient(135deg,var(--tw-gradient-stops))] ${pathname.includes("tasks") && "from-violet-500/[0.12] dark:from-violet-500/[0.24] to-violet-500/[0.04]"}`}>
                 <NavLink

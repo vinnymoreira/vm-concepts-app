@@ -7,9 +7,6 @@ import {
 } from 'chart.js';
 import 'chartjs-adapter-moment';
 
-// Import utilities
-import { formatValue } from '../utils/Utils';
-
 Chart.register(LineController, LineElement, Filler, PointElement, LinearScale, TimeScale, Tooltip);
 
 function LineChart01({
@@ -52,7 +49,7 @@ function LineChart01({
           tooltip: {
             callbacks: {
               title: () => false, // Disable tooltip title
-              label: (context) => formatValue(context.parsed.y),
+              label: (context) => context.parsed.y,
             },
             bodyColor: darkMode ? tooltipBodyColor.dark : tooltipBodyColor.light,
             backgroundColor: darkMode ? tooltipBgColor.dark : tooltipBgColor.light,

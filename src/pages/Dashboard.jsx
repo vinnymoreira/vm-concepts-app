@@ -5,6 +5,8 @@ import Header from '../partials/Header';
 import DashboardCardWeather from '../partials/dashboard/DashboardCardWeather';
 import DashboardCardWeeklyTasks from '../partials/dashboard/DashboardCardWeeklyTasks';
 import DashboardCardClients from '../partials/dashboard/DashboardCardClients';
+import DashboardCardFitness from '../partials/dashboard/DashboardCardFitness';
+
 
 
 function Dashboard() {
@@ -40,6 +42,7 @@ function Dashboard() {
               <DashboardCardWeather />
               <DashboardCardWeeklyTasks />
               <DashboardCardClients />
+              <DashboardCardFitness />
             </div>
 
           </div>

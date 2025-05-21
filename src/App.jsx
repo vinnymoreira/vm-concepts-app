@@ -8,6 +8,7 @@ import Dashboard from './pages/Dashboard';
 import Clients from './pages/Clients';
 import ClientDetail from './partials/clients/ClientDetail';
 import Tasks from './pages/Tasks';
+import Fitness from './pages/Fitness';
 
 // Import auth components
 import Login from './components/Login';
@@ -40,6 +41,11 @@ function App() {
         <Route path="/clients/:id" element={
           <ProtectedRoute>
             <ClientDetail />
+          </ProtectedRoute>
+        } />
+        <Route path="/fitness" element={
+          <ProtectedRoute>
+            <Fitness />
           </ProtectedRoute>
         } />
         <Route path="/tasks" element={
