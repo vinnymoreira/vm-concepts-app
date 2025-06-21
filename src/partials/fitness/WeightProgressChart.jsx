@@ -152,12 +152,8 @@ const WeightProgressChart = ({ goal, weightLogs }) => {
       chart.destroy();
     }
 
-    console.log('Creating new chart with custom options!');
-
     const monthlyLabels = generateMonthlyLabels();
     const axisBounds = getAxisBounds();
-    console.log('Generated monthly labels:', monthlyLabels);
-    console.log('Axis bounds:', axisBounds);
 
     const newChart = new Chart(ctx, {
       type: 'line',
@@ -241,8 +237,6 @@ const WeightProgressChart = ({ goal, weightLogs }) => {
               autoSkip: false,
               color: darkMode ? '#E5E7EB' : '#6B7280',
               callback: function(value, index, ticks) {
-                console.log('X-AXIS CALLBACK - Value:', new Date(value), 'Index:', index);
-                
                 const date = new Date(value);
                 const dateMonthKey = `${date.getFullYear()}-${date.getMonth()}`;
                 
@@ -250,7 +244,6 @@ const WeightProgressChart = ({ goal, weightLogs }) => {
                 const matchingMonth = monthlyLabels.find(ml => ml.monthKey === dateMonthKey);
                 
                 if (matchingMonth) {
-                  console.log('Found matching month:', matchingMonth.label);
                   return matchingMonth.label;
                 }
                 
@@ -259,7 +252,6 @@ const WeightProgressChart = ({ goal, weightLogs }) => {
                 if (isLastMonth) {
                   const lastMonthLabel = monthlyLabels[monthlyLabels.length - 1];
                   if (lastMonthLabel && dateMonthKey === lastMonthLabel.monthKey) {
-                    console.log('Showing last month label:', lastMonthLabel.label);
                     return lastMonthLabel.label;
                   }
                 }
@@ -273,7 +265,6 @@ const WeightProgressChart = ({ goal, weightLogs }) => {
                   );
                   
                   if (monthLabel) {
-                    console.log('Showing month label (early days):', monthLabel.label);
                     return monthLabel.label;
                   }
                 }
