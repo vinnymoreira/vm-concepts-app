@@ -64,9 +64,9 @@ function LineChartFitnessTracker({
           parser: 'yyyy-MM-dd',
           tooltipFormat: 'MMM d, yyyy',
           displayFormats: {
-            day: 'MMM d' // Format for x-axis labels
+            day: 'MMM d'
           },
-          unit: 'day' // Show each logged day
+          unit: 'day'
         },
         grid: {
           display: false,
@@ -76,8 +76,8 @@ function LineChartFitnessTracker({
           color: darkMode ? '#E5E7EB' : '#4B5563',
           maxRotation: 45,
           minRotation: 45,
-          autoSkip: true, // Enable auto-skipping of labels
-          maxTicksLimit: 10 // Maximum number of labels to show
+          autoSkip: true,
+          maxTicksLimit: 10
         }
       }
     },
@@ -87,24 +87,36 @@ function LineChartFitnessTracker({
       },
       tooltip: {
         callbacks: {
-          title: (context) => {
-            const date = new Date(context[0].raw.x);
-            return date.toLocaleDateString('en-US', {
-              month: 'short',
-              day: 'numeric',
-              year: 'numeric'
-            });
-          },
+          title: () => null, // Remove title
           label: (context) => {
-            let label = context.dataset.label || '';
-            if (label) label += ': ';
-            if (context.parsed.y !== null) label += `${context.parsed.y} lbs`;
-            return label;
+            const dataset = context.dataset;
+            const dataPoint = dataset.data[context.dataIndex];
+            
+            // Skip tooltip for projected path
+            if (dataset.label === 'Projected Path') {
+              return null;
+            }
+            
+            // For weight data points, show date and weight
+            if (dataset.label === 'Weight' && dataPoint.date) {
+              return [dataPoint.date, `${context.parsed.y} lbs`];
+            }
+            
+            // For target weight line
+            if (dataset.label === 'Target Weight') {
+              return `Target: ${context.parsed.y} lbs`;
+            }
+            
+            return `${context.parsed.y} lbs`;
           }
         },
         bodyColor: darkMode ? tooltipBodyColor.dark : tooltipBodyColor.light,
         backgroundColor: darkMode ? tooltipBgColor.dark : tooltipBgColor.light,
         borderColor: darkMode ? tooltipBorderColor.dark : tooltipBorderColor.light,
+        filter: function(tooltipItem) {
+          // Hide tooltip for projected path
+          return tooltipItem.dataset.label !== 'Projected Path';
+        }
       }
     },
     interaction: {

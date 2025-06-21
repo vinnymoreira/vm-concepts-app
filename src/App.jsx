@@ -9,6 +9,8 @@ import Clients from './pages/Clients';
 import ClientDetail from './partials/clients/ClientDetail';
 import Tasks from './pages/Tasks';
 import Fitness from './pages/Fitness';
+import Habits from './pages/Habits';
+
 
 // Import auth components
 import Login from './components/Login';
@@ -51,6 +53,11 @@ function App() {
         <Route path="/tasks" element={
           <ProtectedRoute>
             <Tasks />
+          </ProtectedRoute>
+        } />
+        <Route path="/habits" element={
+          <ProtectedRoute>
+            <Habits />
           </ProtectedRoute>
         } />
         <Route path="*" element={<Navigate to="/" replace />} />
