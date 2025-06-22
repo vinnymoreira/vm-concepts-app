@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
 import { supabase } from '../../supabaseClient';
+import { useAuth } from '../../context/AuthContext'; // Add this import
 import { Mail, Phone, Briefcase, Globe, Edit2, Save, X, Trash2, Link as LinkIcon, User, Key, Copy, Check } from 'lucide-react';
 
 import Sidebar from '../Sidebar';
@@ -16,135 +17,142 @@ function ClientDetail() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [isEditing, setIsEditing] = useState(false);
-  const [user, setUser] = useState(null);
   const { id } = useParams();
   const navigate = useNavigate();
   const [copiedField, setCopiedField] = useState(null);
+  
+  // Use the useAuth hook instead of manual user state
+  const { user } = useAuth();
 
   useEffect(() => {
-    checkUser();
-    fetchClient();
-  }, [id]);
-
-  async function checkUser() {
-    const { data, error } = await supabase.auth.getSession();
-    if (error) {
-      console.error('Error getting auth session:', error);
-      setUser(null);
-    } else if (data && data.session) {
-      setUser(data.session.user);
-    } else {
-      setUser(null);
+    if (user) {
+      fetchClient();
     }
-  }
+  }, [id, user]); // Add user as dependency
 
-async function fetchClient() {
-  try {
-    setLoading(true);
-    const { data, error } = await supabase
-      .from('clients')
-      .select('*')
-      .eq('id', id)
-      .single();
-    
-    if (error) throw error;
-    
-    const clientData = {
-      ...data,
-      github_repo: data.github_repo || '',
-      web_host: parseJsonField(data.web_host),
-      registrar: parseJsonField(data.registrar)
-    };
-    
-    // console.log('Fetched client data:', clientData);
-    
-    setClient(clientData);
-    setOriginalClient(clientData);
-  } catch (error) {
-    console.error('Error fetching client:', error);
-    setError(error.message);
-  } finally {
-    setLoading(false);
-  }
-}
+  // Remove the checkUser function since we're using useAuth
 
-async function updateClient() {
-  if (!user) {
-    setError('You must be logged in to update a client.');
-    return;
-  }
+  async function fetchClient() {
+    if (!user) {
+      setError('You must be logged in to view client details.');
+      setLoading(false);
+      return;
+    }
 
-  try {
-    setLoading(true);
-    
-    // Format web_host and registrar as arrays with one object
-    const web_host_array = client.web_host ? [client.web_host] : [];
-    const registrar_array = client.registrar ? [client.registrar] : [];
-
-    // Create a clean copy of the client data for update
-    const updatedClient = {
-      id: client.id,
-      name: client.name,
-      email: client.email,
-      phone: client.phone,
-      company: client.company,
-      website: client.website,
-      status: client.status,
-      github_repo: client.github_repo || null,
-      web_host: web_host_array,
-      registrar: registrar_array,
-      additional_info: client.additional_info || []
-    };
-
-    // console.log('Sending update with data:', updatedClient);
-
-    const { data, error } = await supabase
-      .from('clients')
-      .update(updatedClient)
-      .eq('id', id)
-      .select();
-
-    if (error) throw error;
-
-    if (data && data.length > 0) {
-      const updatedData = {
-        ...data[0],
-        web_host: Array.isArray(data[0].web_host) && data[0].web_host.length > 0 
-          ? data[0].web_host[0] 
-          : {},
-        registrar: Array.isArray(data[0].registrar) && data[0].registrar.length > 0 
-          ? data[0].registrar[0] 
-          : {},
-        additional_info: data[0].additional_info || []
+    try {
+      setLoading(true);
+      const { data, error } = await supabase
+        .from('clients')
+        .select('*')
+        .eq('id', id)
+        .eq('user_id', user.id)  // Ensure user can only access their own clients
+        .single();
+      
+      if (error) {
+        if (error.code === 'PGRST116') {
+          // No rows returned - client doesn't exist or doesn't belong to user
+          setError('Client not found or you do not have permission to view it.');
+        } else {
+          throw error;
+        }
+        return;
+      }
+      
+      const clientData = {
+        ...data,
+        github_repo: data.github_repo || '',
+        web_host: parseJsonField(data.web_host),
+        registrar: parseJsonField(data.registrar)
       };
       
-      setClient(updatedData);
-      setOriginalClient(updatedData);
-      setIsEditing(false);
-      setError(null);
-    } else {
-      setError('Failed to update client. Please try again.');
+      setClient(clientData);
+      setOriginalClient(clientData);
+      setError(null); // Clear any previous errors
+    } catch (error) {
+      console.error('Error fetching client:', error);
+      setError(error.message);
+    } finally {
+      setLoading(false);
     }
-  } catch (error) {
-    console.error('Error updating client:', error);
-    setError(`Error updating client: ${error.message}`);
-  } finally {
-    setLoading(false);
   }
-}
 
-// Simplified parsing function
-function parseJsonField(field) {
-  if (!field) return {};
-  if (Array.isArray(field)) return field[0] || {};
-  if (typeof field === 'object') return field;
-  try {
-    return JSON.parse(field);
-  } catch (error) {
-    console.warn('Error parsing JSON field:', error);
-    return {};
+  async function updateClient() {
+    if (!user) {
+      setError('You must be logged in to update a client.');
+      return;
+    }
+
+    try {
+      setLoading(true);
+      
+      // Format web_host and registrar as arrays with one object
+      const web_host_array = client.web_host ? [client.web_host] : [];
+      const registrar_array = client.registrar ? [client.registrar] : [];
+
+      // Create a clean copy of the client data for update
+      const updatedClient = {
+        id: client.id,
+        name: client.name,
+        email: client.email,
+        phone: client.phone,
+        company: client.company,
+        website: client.website,
+        status: client.status,
+        github_repo: client.github_repo || null,
+        web_host: web_host_array,
+        registrar: registrar_array,
+        additional_info: client.additional_info || [],
+        user_id: user.id  // Ensure user_id is maintained
+      };
+
+      const { data, error } = await supabase
+        .from('clients')
+        .update(updatedClient)
+        .eq('id', id)
+        .eq('user_id', user.id)  // Double-check user owns this client
+        .select();
+
+      if (error) throw error;
+
+      if (data && data.length > 0) {
+        const updatedData = {
+          ...data[0],
+          web_host: Array.isArray(data[0].web_host) && data[0].web_host.length > 0 
+            ? data[0].web_host[0] 
+            : {},
+          registrar: Array.isArray(data[0].registrar) && data[0].registrar.length > 0 
+            ? data[0].registrar[0] 
+            : {},
+          additional_info: data[0].additional_info || []
+        };
+        
+        setClient(updatedData);
+        setOriginalClient(updatedData);
+        setIsEditing(false);
+        setError(null);
+      } else {
+        setError('Failed to update client. Please try again.');
+      }
+    } catch (error) {
+      console.error('Error updating client:', error);
+      setError(`Error updating client: ${error.message}`);
+    } finally {
+      setLoading(false);
+    }
   }
-}
+
+  // Simplified parsing function
+  function parseJsonField(field) {
+    if (!field) return {};
+    if (Array.isArray(field)) return field[0] || {};
+    if (typeof field === 'object') return field;
+    try {
+      return JSON.parse(field);
+    } catch (error) {
+      console.warn('Error parsing JSON field:', error);
+      return {};
+    }
+  }
 
   async function deleteClient() {
     if (!user) {
@@ -158,7 +166,8 @@ function parseJsonField(field) {
         const { error } = await supabase
           .from('clients')
           .delete()
-          .eq('id', id);
+          .eq('id', id)
+          .eq('user_id', user.id);  // Ensure user can only delete their own clients
 
         if (error) throw error;
 
@@ -176,44 +185,49 @@ function parseJsonField(field) {
     const { value } = e.target;
     const keys = fieldName.split('.');
     
-    setClient(prevClient => {
-      let updatedClient = { ...prevClient };
-      if (keys.length === 1) {
-        updatedClient[keys[0]] = value;
-      } else if (keys.length === 2) {
-        updatedClient[keys[0]] = {
-          ...updatedClient[keys[0]],
-          [keys[1]]: value
-        };
-      }
-      return updatedClient;
-    });
-  };
-
-  const handleStatusChange = async (checked) => {
-    const newStatus = checked ? 'active' : 'inactive';
-    setClient(prev => ({ ...prev, status: newStatus }));
-    
-    if (!isEditing) {
-      try {
-        const { error } = await supabase
-          .from('clients')
-          .update({ status: newStatus })
-          .eq('id', id);
-
-        if (error) throw error;
-      } catch (error) {
-        console.error('Error updating client status:', error);
-        setError(`Error updating client status: ${error.message}`);
-        setClient(prev => ({ ...prev, status: prev.status === 'active' ? 'inactive' : 'active' }));
-      }
+    if (keys.length === 1) {
+      setClient(prev => ({ ...prev, [fieldName]: value }));
+    } else {
+      setClient(prev => {
+        const newClient = { ...prev };
+        let current = newClient;
+        for (let i = 0; i < keys.length - 1; i++) {
+          if (!current[keys[i]]) current[keys[i]] = {};
+          current = current[keys[i]];
+        }
+        current[keys[keys.length - 1]] = value;
+        return newClient;
+      });
     }
   };
 
-  const formatDate = (dateString) => {
-    if (!dateString) return 'N/A';
-    const date = new Date(dateString);
-    return date.toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' });
+  const handleJsonFieldChange = (fieldName, subField, value) => {
+    setClient(prev => ({
+      ...prev,
+      [fieldName]: {
+        ...prev[fieldName],
+        [subField]: value
+      }
+    }));
+  };
+
+  const handleStatusChange = (isActive) => {
+    const newStatus = isActive ? 'active' : 'inactive';
+    setClient(prev => ({ ...prev, status: newStatus }));
+  };
+
+  const copyToClipboard = async (text, fieldName) => {
+    try {
+      await navigator.clipboard.writeText(text);
+      setCopiedField(fieldName);
+      setTimeout(() => setCopiedField(null), 2000);
+    } catch (err) {
+      console.error('Failed to copy: ', err);
+    }
+  };
+
+  const handleSave = async () => {
+    await updateClient();
   };
 
   const handleCancel = () => {
@@ -222,64 +236,99 @@ function parseJsonField(field) {
     setError(null);
   };
 
-  const copyToClipboard = (text, fieldName) => {
-    navigator.clipboard.writeText(text).then(() => {
-      setCopiedField(fieldName);
-      setTimeout(() => setCopiedField(null), 2000); // Reset after 2 seconds
-    }).catch(err => {
-      console.error('Failed to copy text: ', err);
-    });
-  };
-
-  const renderField = (icon, value, type = "text", link = null, canCopy = false, fieldName = '') => (
-    <div className="flex items-center mb-4">
-      <div className="flex-shrink-0 mr-3">
-        {icon}
+  // Show loading state while checking authentication
+  if (!user) {
+    return (
+      <div className="flex h-screen overflow-hidden">
+        <Sidebar sidebarOpen={sidebarOpen} setSidebarOpen={setSidebarOpen} />
+        <div className="relative flex flex-col flex-1 overflow-y-auto overflow-x-hidden">
+          <Header sidebarOpen={sidebarOpen} setSidebarOpen={setSidebarOpen} />
+          <main className="grow">
+            <div className="px-4 sm:px-6 lg:px-8 py-8 w-full mx-auto">
+              <div className="text-center">
+                <h2 className="text-xl font-semibold text-gray-800 dark:text-gray-100 mb-2">
+                  Authentication Required
+                </h2>
+                <p className="text-gray-600 dark:text-gray-400">
+                  Please sign in to view client details.
+                </p>
+              </div>
+            </div>
+          </main>
+        </div>
       </div>
-      <div className="flex-grow flex items-center">
-        {isEditing ? (
-          <input
-            type={type}
-            name={fieldName}
-            value={value || ''}
-            onChange={handleInputChange}
-            className="w-full bg-transparent border-b border-gray-300 dark:border-gray-600 focus:border-indigo-500 dark:focus:border-indigo-400 focus:outline-none py-1 transition duration-150 ease-in-out"
-          />
-        ) : link ? (
-          <a href={link} target="_blank" rel="noopener noreferrer" className="text-blue-500 hover:underline">
-            {value || 'N/A'}
-          </a>
-        ) : (
-          <p className="text-gray-900 dark:text-gray-100">
-            {value || 'N/A'}
-          </p>
-        )}
-        {canCopy && !isEditing && (
-          <button
-            onClick={() => copyToClipboard(value, fieldName)}
-            className="ml-2 p-1 text-gray-500 hover:text-gray-700 focus:outline-none"
-            title="Copy to clipboard"
-          >
-            {copiedField === fieldName ? <Check className="w-4 h-4 text-green-500" /> : <Copy className="w-4 h-4" />}
-          </button>
-        )}
-      </div>
-    </div>
-  );
+    );
+  }
 
-  const renderCredentials = (urlIcon, url, usernameIcon, username, passwordIcon, password, fieldPrefix) => (
-    <div className="mb-4">
-      {renderField(urlIcon, url, "text", url, false, `${fieldPrefix}_url`)}
-      <div className="grid grid-cols-2 gap-4 mt-2">
-        {renderField(usernameIcon, username, "text", null, true, `${fieldPrefix}_username`)}
-        {renderField(passwordIcon, password, "password", null, true, `${fieldPrefix}_password`)}
+  if (loading) {
+    return (
+      <div className="flex h-screen overflow-hidden">
+        <Sidebar sidebarOpen={sidebarOpen} setSidebarOpen={setSidebarOpen} />
+        <div className="relative flex flex-col flex-1 overflow-y-auto overflow-x-hidden">
+          <Header sidebarOpen={sidebarOpen} setSidebarOpen={setSidebarOpen} />
+          <main className="grow">
+            <div className="px-4 sm:px-6 lg:px-8 py-8 w-full mx-auto">
+              <div className="text-center">Loading client details...</div>
+            </div>
+          </main>
+        </div>
       </div>
-    </div>
-  );
+    );
+  }
 
-  if (loading && !client) return <div className="flex items-center h-screen justify-center p-4">Loading board...</div>;
-  if (error && !client) return <div>Error: {error}</div>;
-  if (!client) return <div>No client found</div>;
+  if (error) {
+    return (
+      <div className="flex h-screen overflow-hidden">
+        <Sidebar sidebarOpen={sidebarOpen} setSidebarOpen={setSidebarOpen} />
+        <div className="relative flex flex-col flex-1 overflow-y-auto overflow-x-hidden">
+          <Header sidebarOpen={sidebarOpen} setSidebarOpen={setSidebarOpen} />
+          <main className="grow">
+            <div className="px-4 sm:px-6 lg:px-8 py-8 w-full mx-auto">
+              <div className="text-center">
+                <h2 className="text-xl font-semibold text-red-600 mb-2">Error</h2>
+                <p className="text-gray-600 dark:text-gray-400 mb-4">{error}</p>
+                <Link 
+                  to="/clients"
+                  className="inline-flex items-center px-4 py-2 bg-indigo-500 hover:bg-indigo-600 text-white rounded-lg transition-colors"
+                >
+                  ← Back to Clients
+                </Link>
+              </div>
+            </div>
+          </main>
+        </div>
+      </div>
+    );
+  }
+
+  if (!client) {
+    return (
+      <div className="flex h-screen overflow-hidden">
+        <Sidebar sidebarOpen={sidebarOpen} setSidebarOpen={setSidebarOpen} />
+        <div className="relative flex flex-col flex-1 overflow-y-auto overflow-x-hidden">
+          <Header sidebarOpen={sidebarOpen} setSidebarOpen={setSidebarOpen} />
+          <main className="grow">
+            <div className="px-4 sm:px-6 lg:px-8 py-8 w-full mx-auto">
+              <div className="text-center">
+                <h2 className="text-xl font-semibold text-gray-800 dark:text-gray-100 mb-2">
+                  Client Not Found
+                </h2>
+                <p className="text-gray-600 dark:text-gray-400 mb-4">
+                  The client you're looking for doesn't exist or you don't have permission to view it.
+                </p>
+                <Link 
+                  to="/clients"
+                  className="inline-flex items-center px-4 py-2 bg-indigo-500 hover:bg-indigo-600 text-white rounded-lg transition-colors"
+                >
+                  ← Back to Clients
+                </Link>
+              </div>
+            </div>
+          </main>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="flex h-screen overflow-hidden">
@@ -288,60 +337,61 @@ function parseJsonField(field) {
         <Header sidebarOpen={sidebarOpen} setSidebarOpen={setSidebarOpen} />
         <main className="grow">
           <div className="px-4 sm:px-6 lg:px-8 py-8 w-full mx-auto">
-            <div className="mb-8 flex justify-between items-center">
-              <Link to="/clients" className="btn bg-white hover:bg-gray-200">
-                &larr; Back to Clients
-              </Link>
-              <div className="flex space-x-2">
-                {isEditing ? (
-                  <>
-                    <button
-                      onClick={handleCancel}
-                      className="btn bg-gray-300 hover:bg-gray-400 text-gray-800 flex items-center"
-                    >
-                      <X className="w-4 h-4 mr-2" />
-                      Cancel
-                    </button>
-                    <button
-                      onClick={updateClient}
-                      className="btn bg-green-500 hover:bg-green-600 text-white flex items-center"
-                      disabled={loading}
-                    >
-                      <Save className="w-4 h-4 mr-2" />
-                      {loading ? 'Saving...' : 'Save Changes'}
-                    </button>
-                  </>
-                ) : (
-                  <>
-                    <button
-                      onClick={() => setIsEditing(true)}
-                      className="btn bg-indigo-500 hover:bg-indigo-600 text-white flex items-center"
-                    >
-                      <Edit2 className="w-4 h-4 mr-2" />
-                      Edit Client
-                    </button>
-                    <button
-                      onClick={deleteClient}
-                      className="btn bg-red-400 hover:bg-red-600 text-white flex items-center"
-                      disabled={loading}
-                    >
-                      <Trash2 className="w-4 h-4 mr-2" />
-                      Delete Client
-                    </button>
-                  </>
-                )}
+            
+            {/* Header */}
+            <div className="mb-8">
+              <div className="flex items-center justify-between">
+                <Link to="/clients" className="text-indigo-500 hover:text-indigo-600 flex items-center">
+                  ← Back to Clients
+                </Link>
+                <div className="flex space-x-2">
+                  {isEditing ? (
+                    <>
+                      <button
+                        onClick={handleSave}
+                        disabled={loading}
+                        className="flex items-center px-4 py-2 bg-green-500 hover:bg-green-600 text-white rounded-lg transition-colors disabled:opacity-50"
+                      >
+                        <Save className="w-4 h-4 mr-2" />
+                        Save
+                      </button>
+                      <button
+                        onClick={handleCancel}
+                        className="flex items-center px-4 py-2 bg-gray-500 hover:bg-gray-600 text-white rounded-lg transition-colors"
+                      >
+                        <X className="w-4 h-4 mr-2" />
+                        Cancel
+                      </button>
+                    </>
+                  ) : (
+                    <>
+                      <button
+                        onClick={() => setIsEditing(true)}
+                        className="flex items-center px-4 py-2 bg-indigo-500 hover:bg-indigo-600 text-white rounded-lg transition-colors"
+                      >
+                        <Edit2 className="w-4 h-4 mr-2" />
+                        Edit
+                      </button>
+                      <button
+                        onClick={deleteClient}
+                        className="flex items-center px-4 py-2 bg-red-500 hover:bg-red-600 text-white rounded-lg transition-colors"
+                      >
+                        <Trash2 className="w-4 h-4 mr-2" />
+                        Delete
+                      </button>
+                    </>
+                  )}
+                </div>
               </div>
             </div>
-            {error && (
-              <div className="mb-4 p-4 bg-red-100 border border-red-400 text-red-700 rounded">
-                {error}
-              </div>
-            )}
-            <div className="bg-white dark:bg-gray-800 shadow-lg rounded-lg p-6">
+
+            {/* Content */}
+            <div className="bg-white dark:bg-gray-800 shadow-sm rounded-lg p-6">
               {isEditing ? (
                 <EditClientForm
                   client={client}
                   handleInputChange={handleInputChange}
+                  handleJsonFieldChange={handleJsonFieldChange}
                   handleStatusChange={handleStatusChange}
                 />
               ) : (

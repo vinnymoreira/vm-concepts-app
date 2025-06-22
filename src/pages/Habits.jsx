@@ -18,33 +18,81 @@ function Habits() {
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [selectedHabit, setSelectedHabit] = useState(null);
   const [viewMode, setViewMode] = useState('all'); // 'all', 'healthy', 'unhealthy'
-  const { user } = useAuth();
+  
+  // ✅ Get user and loading from useAuth  
+  const { user, loading: authLoading } = useAuth();
 
+  // ✅ Fixed useEffect with proper dependencies and cleanup
   useEffect(() => {
-    fetchHabits();
-    fetchHabitLogs();
-  }, []);
+    let isMounted = true;
 
-  const fetchHabits = async () => {
+    const initializeHabits = async () => {
+      if (authLoading) return; // Wait for auth to initialize
+      
+      if (!user) {
+        if (isMounted) {
+          setLoading(false);
+        }
+        return;
+      }
+
+      try {
+        if (isMounted) {
+          setLoading(true);
+          setError(null);
+        }
+
+        // Fetch habits and logs
+        await Promise.all([
+          fetchHabits(isMounted),
+          fetchHabitLogs(isMounted)
+        ]);
+
+        if (isMounted) {
+          setLoading(false);
+        }
+      } catch (err) {
+        console.error('Error initializing habits:', err);
+        if (isMounted) {
+          setError(err.message);
+          setLoading(false);
+        }
+      }
+    };
+
+    initializeHabits();
+
+    return () => {
+      isMounted = false;
+    };
+  }, [user, authLoading]);
+
+  const fetchHabits = async (isMounted = true) => {
+    if (!user) return;
+
     try {
-      setLoading(true);
       const { data, error } = await supabase
         .from('habits')
         .select('*')
-        .eq('user_id', user.id)
+        .eq('user_id', user.id)  // ✅ Filter by user
         .order('created_at', { ascending: false });
       
       if (error) throw error;
-      setHabits(data || []);
+      
+      if (isMounted) {
+        setHabits(data || []);
+      }
     } catch (err) {
       console.error('Error fetching habits:', err);
-      setError(err.message);
-    } finally {
-      setLoading(false);
+      if (isMounted) {
+        setError(err.message);
+      }
     }
   };
 
-  const fetchHabitLogs = async () => {
+  const fetchHabitLogs = async (isMounted = true) => {
+    if (!user) return;
+
     try {
       // Get logs for the last 30 days
       const thirtyDaysAgo = new Date();
@@ -53,32 +101,38 @@ function Habits() {
       const { data, error } = await supabase
         .from('habit_logs')
         .select('*')
-        .eq('user_id', user.id)
+        .eq('user_id', user.id)  // ✅ Filter by user
         .gte('log_date', thirtyDaysAgo.toISOString().split('T')[0])
         .order('log_date', { ascending: false });
       
       if (error) throw error;
-      setHabitLogs(data || []);
+      
+      if (isMounted) {
+        setHabitLogs(data || []);
+      }
     } catch (err) {
       console.error('Error fetching habit logs:', err);
-      setError(err.message);
+      if (isMounted) {
+        setError(err.message);
+      }
     }
   };
 
   const handleAddHabit = async (habitData) => {
+    if (!user) {
+      setError('You must be logged in to add habits');
+      return;
+    }
+
     try {
       const { data, error } = await supabase
         .from('habits')
-        .insert([{
-          ...habitData,
-          user_id: user.id
-        }])
-        .select()
-        .single();
+        .insert([{ ...habitData, user_id: user.id }])  // ✅ Add user_id
+        .select();
 
       if (error) throw error;
-      
-      setHabits([data, ...habits]);
+
+      setHabits(prev => [data[0], ...prev]);
       setIsAddModalOpen(false);
     } catch (err) {
       console.error('Error adding habit:', err);
@@ -86,209 +140,302 @@ function Habits() {
     }
   };
 
-  const handleLogHabit = async (habitId, quantity = 1, cost = null, notes = '') => {
+  const handleUpdateHabit = async (habitId, updates) => {
+    if (!user) {
+      setError('You must be logged in to update habits');
+      return;
+    }
+
+    try {
+      const { data, error } = await supabase
+        .from('habits')
+        .update(updates)
+        .eq('id', habitId)
+        .eq('user_id', user.id)  // ✅ Ensure user owns the habit
+        .select();
+
+      if (error) throw error;
+
+      setHabits(prev => prev.map(habit => 
+        habit.id === habitId ? { ...habit, ...updates } : habit
+      ));
+    } catch (err) {
+      console.error('Error updating habit:', err);
+      setError(err.message);
+    }
+  };
+
+  const handleDeleteHabit = async (habitId) => {
+    if (!user) {
+      setError('You must be logged in to delete habits');
+      return;
+    }
+
+    try {
+      const { error } = await supabase
+        .from('habits')
+        .delete()
+        .eq('id', habitId)
+        .eq('user_id', user.id);  // ✅ Ensure user owns the habit
+
+      if (error) throw error;
+
+      setHabits(prev => prev.filter(habit => habit.id !== habitId));
+      setSelectedHabit(null);
+    } catch (err) {
+      console.error('Error deleting habit:', err);
+      setError(err.message);
+    }
+  };
+
+  const handleLogHabit = async (habitId, logData) => {
+    if (!user) {
+      setError('You must be logged in to log habits');
+      return;
+    }
+
     try {
       const today = new Date().toISOString().split('T')[0];
       
       const { data, error } = await supabase
         .from('habit_logs')
-        .upsert([{
+        .insert([{
           habit_id: habitId,
-          user_id: user.id,
+          user_id: user.id,  // ✅ Add user_id
           log_date: today,
-          quantity,
-          cost,
-          notes
+          ...logData
         }])
-        .select()
-        .single();
+        .select();
 
       if (error) throw error;
+
+      setHabitLogs(prev => [data[0], ...prev]);
       
-      // Update habit logs state
-      const updatedLogs = habitLogs.filter(log => 
-        !(log.habit_id === habitId && log.log_date === today)
-      );
-      setHabitLogs([data, ...updatedLogs]);
+      // Refresh habits to update streak counts
+      fetchHabits();
     } catch (err) {
       console.error('Error logging habit:', err);
       setError(err.message);
     }
   };
 
+  // ✅ Show loading while auth initializes
+  if (authLoading) {
+    return (
+      <div className="flex h-screen overflow-hidden">
+        <Sidebar sidebarOpen={sidebarOpen} setSidebarOpen={setSidebarOpen} />
+        <div className="relative flex flex-col flex-1 overflow-hidden">
+          <Header sidebarOpen={sidebarOpen} setSidebarOpen={setSidebarOpen} />
+          <main className="flex-1 overflow-y-auto">
+            <div className="px-4 sm:px-6 lg:px-8 py-8 flex items-center justify-center">
+              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-violet-600"></div>
+            </div>
+          </main>
+        </div>
+      </div>
+    );
+  }
+
+  // ✅ Show auth required message
+  if (!user) {
+    return (
+      <div className="flex h-screen overflow-hidden">
+        <Sidebar sidebarOpen={sidebarOpen} setSidebarOpen={setSidebarOpen} />
+        <div className="relative flex flex-col flex-1 overflow-hidden">
+          <Header sidebarOpen={sidebarOpen} setSidebarOpen={setSidebarOpen} />
+          <main className="flex-1 overflow-y-auto">
+            <div className="px-4 sm:px-6 lg:px-8 py-8">
+              <div className="text-center">
+                <h2 className="text-xl font-semibold text-gray-800 dark:text-gray-100 mb-2">
+                  Authentication Required
+                </h2>
+                <p className="text-gray-600 dark:text-gray-400">
+                  Please sign in to view your habits.
+                </p>
+              </div>
+            </div>
+          </main>
+        </div>
+      </div>
+    );
+  }
+
+  // ✅ Show data loading spinner
+  if (loading) {
+    return (
+      <div className="flex h-screen overflow-hidden">
+        <Sidebar sidebarOpen={sidebarOpen} setSidebarOpen={setSidebarOpen} />
+        <div className="relative flex flex-col flex-1 overflow-hidden">
+          <Header sidebarOpen={sidebarOpen} setSidebarOpen={setSidebarOpen} />
+          <main className="flex-1 overflow-y-auto">
+            <div className="px-4 sm:px-6 lg:px-8 py-8 flex items-center justify-center">
+              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-violet-600"></div>
+              <span className="ml-2">Loading habits...</span>
+            </div>
+          </main>
+        </div>
+      </div>
+    );
+  }
+
+  // ✅ Show error state
+  if (error) {
+    return (
+      <div className="flex h-screen overflow-hidden">
+        <Sidebar sidebarOpen={sidebarOpen} setSidebarOpen={setSidebarOpen} />
+        <div className="relative flex flex-col flex-1 overflow-hidden">
+          <Header sidebarOpen={sidebarOpen} setSidebarOpen={setSidebarOpen} />
+          <main className="flex-1 overflow-y-auto">
+            <div className="px-4 sm:px-6 lg:px-8 py-8">
+              <div className="text-center">
+                <h2 className="text-xl font-semibold text-red-600 mb-2">Error</h2>
+                <p className="text-gray-600 dark:text-gray-400">{error}</p>
+                <button 
+                  onClick={() => {
+                    setError(null);
+                    fetchHabits();
+                    fetchHabitLogs();
+                  }}
+                  className="mt-4 bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded"
+                >
+                  Try Again
+                </button>
+              </div>
+            </div>
+          </main>
+        </div>
+      </div>
+    );
+  }
+
   const filteredHabits = habits.filter(habit => {
     if (viewMode === 'all') return true;
     return habit.category === viewMode;
   });
 
-  const healthyHabits = habits.filter(h => h.category === 'healthy');
-  const unhealthyHabits = habits.filter(h => h.category === 'unhealthy');
-
-  // Calculate statistics
-  const todayLogs = habitLogs.filter(log => 
-    log.log_date === new Date().toISOString().split('T')[0]
-  );
+  // ✅ Calculate stats for the overview component
+  const healthyHabits = habits.filter(habit => habit.category === 'healthy');
+  const unhealthyHabits = habits.filter(habit => habit.category === 'unhealthy');
   
-  const totalSpentToday = todayLogs.reduce((sum, log) => {
+  // Get today's logs
+  const today = new Date().toISOString().split('T')[0];
+  const todaysLogs = habitLogs.filter(log => log.log_date === today);
+  
+  // Calculate financial stats
+  const totalSpentToday = todaysLogs.reduce((sum, log) => {
     const habit = habits.find(h => h.id === log.habit_id);
-    if (habit?.category === 'unhealthy') {
-      // For unhealthy habits, if it's a "success", they saved money
-      return log.notes === 'success' ? sum + (log.cost || 0) : sum;
-    } else {
-      // For healthy habits, normal spending
-      return sum + (log.cost || 0);
+    if (habit?.category === 'healthy' && habit?.cost_per_unit) {
+      return sum + (parseFloat(habit.cost_per_unit) * (log.quantity || 1));
     }
+    return sum;
   }, 0);
-
-  const totalSavedToday = todayLogs.reduce((sum, log) => {
+  
+  const totalSavedToday = todaysLogs.reduce((sum, log) => {
     const habit = habits.find(h => h.id === log.habit_id);
-    if (habit?.category === 'unhealthy' && log.notes === 'success') {
-      return sum + (log.cost || 0);
+    if (habit?.category === 'unhealthy' && habit?.cost_per_unit) {
+      // For unhealthy habits, we "save" money when we avoid them
+      return sum + (parseFloat(habit.cost_per_unit) * (log.quantity || 1));
     }
     return sum;
   }, 0);
 
-  const completedToday = todayLogs.length;
-  const totalHabits = habits.length;
-
-  if (loading) {
-    return (
-      <div className="flex h-screen overflow-hidden">
-        <Sidebar sidebarOpen={sidebarOpen} setSidebarOpen={setSidebarOpen} />
-        <div className="relative flex flex-col flex-1 overflow-y-auto overflow-x-hidden">
-          <Header sidebarOpen={sidebarOpen} setSidebarOpen={setSidebarOpen} />
-          <main className="grow">
-            <div className="px-4 sm:px-6 lg:px-8 py-8 w-full mx-auto">
-              <div className="flex items-center justify-center p-4">
-                Loading habits...
-              </div>
-            </div>
-          </main>
-        </div>
-      </div>
-    );
-  }
-
-  if (error) {
-    return (
-      <div className="flex h-screen overflow-hidden">
-        <Sidebar sidebarOpen={sidebarOpen} setSidebarOpen={setSidebarOpen} />
-        <div className="relative flex flex-col flex-1 overflow-y-auto overflow-x-hidden">
-          <Header sidebarOpen={sidebarOpen} setSidebarOpen={setSidebarOpen} />
-          <main className="grow">
-            <div className="px-4 sm:px-6 lg:px-8 py-8 w-full mx-auto">
-              <div className="text-red-500 p-4">Error: {error}</div>
-            </div>
-          </main>
-        </div>
-      </div>
-    );
-  }
-
   return (
     <div className="flex h-screen overflow-hidden">
-      {/* Sidebar */}
       <Sidebar sidebarOpen={sidebarOpen} setSidebarOpen={setSidebarOpen} />
 
-      {/* Content area */}
-      <div className="relative flex flex-col flex-1 overflow-y-auto overflow-x-hidden">
-        {/* Site header */}
+      <div className="relative flex flex-col flex-1 overflow-hidden">
         <Header sidebarOpen={sidebarOpen} setSidebarOpen={setSidebarOpen} />
 
-        <main className="grow">
-          <div className="px-4 sm:px-6 lg:px-8 py-8 w-full mx-auto">
-            {/* Title and Actions */}
-            <div className="sm:flex sm:justify-between sm:items-center mb-8">
-              <div className="mb-4 sm:mb-0">
-                <h1 className="text-3xl font-bold text-gray-900 dark:text-gray-100">
-                  Habits
-                </h1>
-                <p className="text-gray-600 dark:text-gray-400 mt-1">
-                  Track your daily habits and build better routines
-                </p>
-              </div>
-
-              <div className="flex flex-col sm:flex-row gap-4">
-                {/* Updated Filter Buttons */}
-                <div className="flex bg-gray-100 dark:bg-gray-800 rounded-lg p-1">
-                  <button
-                    onClick={() => setViewMode('all')}
-                    className={`px-4 py-2 text-sm font-semibold rounded-md transition-all duration-200 ${
-                      viewMode === 'all' 
-                        ? 'bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 shadow-sm' 
-                        : 'text-gray-700 dark:text-gray-300 hover:text-gray-900 dark:hover:text-gray-100'
-                    }`}
-                  >
-                    All Habits
-                  </button>
-                  <button
-                    onClick={() => setViewMode('healthy')}
-                    className={`px-4 py-2 text-sm font-semibold rounded-md transition-all duration-200 flex items-center space-x-1 ${
-                      viewMode === 'healthy' 
-                        ? 'bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 shadow-sm' 
-                        : 'text-gray-700 dark:text-gray-300 hover:text-gray-900 dark:hover:text-gray-100'
-                    }`}
-                  >
-                    <TrendingUp className="w-4 h-4" />
-                    <span>Healthy</span>
-                  </button>
-                  <button
-                    onClick={() => setViewMode('unhealthy')}
-                    className={`px-4 py-2 text-sm font-semibold rounded-md transition-all duration-200 flex items-center space-x-1 ${
-                      viewMode === 'unhealthy' 
-                        ? 'bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 shadow-sm' 
-                        : 'text-gray-700 dark:text-gray-300 hover:text-gray-900 dark:hover:text-gray-100'
-                    }`}
-                  >
-                    <TrendingDown className="w-4 h-4" />
-                    <span>Vices</span>
-                  </button>
-                </div>
-                
-                {/* Updated Add Button */}
-                <button 
-                  onClick={() => setIsAddModalOpen(true)}
-                  className="bg-indigo-600 hover:bg-indigo-700 text-white px-6 py-3 rounded-lg font-semibold shadow-lg hover:shadow-xl transition-all duration-200 flex items-center space-x-2"
-                >
-                  <Plus className="w-5 h-5" />
-                  <span>Add Habit</span>
-                </button>
-              </div>
+        <main className="flex-1 overflow-y-auto">
+          <div className="px-4 sm:px-6 lg:px-8 py-8">
+            <div className="mb-8 flex justify-between items-center">
+              <h1 className="text-2xl md:text-3xl text-gray-800 dark:text-gray-100 font-bold">
+                Habits
+              </h1>
+              <button
+                onClick={() => setIsAddModalOpen(true)}
+                className="btn bg-indigo-500 hover:bg-indigo-600 text-white"
+              >
+                <Plus className="w-4 h-4 mr-2" />
+                <span>Add Habit</span>
+              </button>
             </div>
 
-            {/* Overview Stats */}
-            <HabitsOverview 
-              totalHabits={totalHabits}
-              completedToday={completedToday}
-              totalSpentToday={totalSpentToday}
-              totalSavedToday={totalSavedToday}
-              healthyHabits={healthyHabits.length}
-              unhealthyHabits={unhealthyHabits.length}
-            />
+            {/* View Mode Filter */}
+            <div className="mb-6 flex space-x-2">
+              <button
+                onClick={() => setViewMode('all')}
+                className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
+                  viewMode === 'all'
+                    ? 'bg-indigo-500 text-white'
+                    : 'bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-300 dark:hover:bg-gray-600'
+                }`}
+              >
+                All Habits
+              </button>
+              <button
+                onClick={() => setViewMode('healthy')}
+                className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors flex items-center ${
+                  viewMode === 'healthy'
+                    ? 'bg-green-500 text-white'
+                    : 'bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-300 dark:hover:bg-gray-600'
+                }`}
+              >
+                <TrendingUp className="w-4 h-4 mr-1" />
+                Healthy
+              </button>
+              <button
+                onClick={() => setViewMode('unhealthy')}
+                className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors flex items-center ${
+                  viewMode === 'unhealthy'
+                    ? 'bg-red-500 text-white'
+                    : 'bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-300 dark:hover:bg-gray-600'
+                }`}
+              >
+                <TrendingDown className="w-4 h-4 mr-1" />
+                Unhealthy
+              </button>
+            </div>
 
-            {/* Habits Grid */}
-            <HabitsGrid 
-              habits={filteredHabits}
-              habitLogs={habitLogs}
-              onLogHabit={handleLogHabit}
-              onHabitClick={setSelectedHabit}
-            />
+            <div className="space-y-6">
+              {/* Overview Cards */}
+              <HabitsOverview 
+                healthyHabits={healthyHabits.length}
+                unhealthyHabits={unhealthyHabits.length}
+                completedToday={todaysLogs.length}
+                totalSpentToday={totalSpentToday}
+                totalSavedToday={totalSavedToday}
+              />
+
+              {/* Habits Grid */}
+              <HabitsGrid
+                habits={filteredHabits}
+                habitLogs={habitLogs}
+                onHabitClick={setSelectedHabit}
+                onLogHabit={handleLogHabit}
+                onUpdateHabit={handleUpdateHabit}
+                onDeleteHabit={handleDeleteHabit}
+              />
+            </div>
           </div>
         </main>
       </div>
 
-      {/* Modals */}
+      {/* Add Habit Modal */}
       <AddHabitModal
         isOpen={isAddModalOpen}
         onClose={() => setIsAddModalOpen(false)}
         onAddHabit={handleAddHabit}
       />
-      
+
+      {/* Habit Detail Modal */}
       {selectedHabit && (
         <HabitDetailModal
           habit={selectedHabit}
           habitLogs={habitLogs.filter(log => log.habit_id === selectedHabit.id)}
           onClose={() => setSelectedHabit(null)}
+          onUpdateHabit={handleUpdateHabit}
+          onDeleteHabit={handleDeleteHabit}
           onLogHabit={handleLogHabit}
         />
       )}

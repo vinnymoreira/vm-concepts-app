@@ -23,7 +23,12 @@ const SignUp = () => {
 
     setLoading(true);
     try {
-      const { error } = await signUp(email, password);
+      const { error } = await signUp(formData.email, formData.password, {
+        data: {
+          full_name: formData.name,    // This saves to user_metadata
+          display_name: formData.name  // Backup field
+        }
+      });
       if (error) throw error;
       navigate('/');
     } catch (error) {

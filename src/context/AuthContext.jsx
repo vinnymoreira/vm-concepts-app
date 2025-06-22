@@ -6,18 +6,21 @@ const AuthContext = createContext({});
 export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [initialized, setInitialized] = useState(false); // ✅ Add initialized state
 
   useEffect(() => {
     // Get session from supabase
     supabase.auth.getSession().then(({ data: { session } }) => {
       setUser(session?.user ?? null);
       setLoading(false);
+      setInitialized(true); // ✅ Mark as initialized
     });
 
     // Listen for auth changes
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
       setUser(session?.user ?? null);
       setLoading(false);
+      setInitialized(true); // ✅ Mark as initialized
     });
 
     return () => subscription.unsubscribe();
@@ -63,6 +66,7 @@ export const AuthProvider = ({ children }) => {
   const value = {
     user,
     loading,
+    initialized, // ✅ Export initialized
     signIn,
     signUp,
     signOut,

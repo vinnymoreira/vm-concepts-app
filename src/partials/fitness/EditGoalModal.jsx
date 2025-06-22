@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { X } from 'lucide-react';
+import { X, Trash2 } from 'lucide-react';
 
 const getTodayDateString = () => {
   const now = new Date();
@@ -8,6 +8,7 @@ const getTodayDateString = () => {
   return localDate.toISOString().split('T')[0];
 };
 
+// Add these props to the EditGoalModal component:
 const EditGoalModal = ({ 
   isOpen, 
   onClose, 
@@ -16,6 +17,7 @@ const EditGoalModal = ({
   deadline, 
   setDeadline, 
   onSave, 
+  onDelete, // ✅ Add this new prop
   goal, 
   weightLogs, 
   existingMilestones 
@@ -293,21 +295,40 @@ const EditGoalModal = ({
             </div>
           </div>
           
-          <div className="flex justify-end space-x-3 mt-8">
-            <button
-              type="button"
-              onClick={onClose}
-              className="btn bg-gray-200 hover:bg-gray-300 text-gray-800"
-            >
-              Cancel
-            </button>
-            <button
-              type="submit"
-              className="btn bg-indigo-500 hover:bg-indigo-600 text-white"
-            >
-              {goal ? 'Update Goal' : 'Set Goal'}
-            </button>
+          <div className="flex justify-between items-center mt-8">
+            {goal && (
+              <button
+                type="button"
+                onClick={() => {
+                  if (window.confirm('Are you sure you want to delete this fitness goal? This action cannot be undone.')) {
+                    onDelete(goal.id);
+                  }
+                }}
+                className="btn bg-red-500 hover:bg-red-600 text-white flex items-center"
+              >
+                <Trash2 className="w-4 h-4 mr-2" />
+                Delete Goal
+              </button>
+            )}
+            
+            {/* Right side buttons */}
+            <div className="flex space-x-3 ml-auto">
+              <button
+                type="button"
+                onClick={onClose}
+                className="btn bg-gray-200 hover:bg-gray-300 text-gray-800"
+              >
+                Cancel
+              </button>
+              <button
+                type="submit"
+                className="btn bg-indigo-500 hover:bg-indigo-600 text-white"
+              >
+                {goal ? 'Update Goal' : 'Set Goal'}
+              </button>
+            </div>
           </div>
+
         </form>
       </div>
     </div>

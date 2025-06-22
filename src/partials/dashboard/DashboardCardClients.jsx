@@ -8,30 +8,75 @@ const DashboardCardClients = () => {
   const [clients, setClients] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
-  const { user } = useAuth();
+  const { user, initialized } = useAuth();
 
   useEffect(() => {
-    fetchClients();
-  }, []);
+    let isMounted = true;
 
-  const fetchClients = async () => {
-    try {
-      setLoading(true);
-      const { data, error } = await supabase
-        .from('clients')
-        .select('*')
-        .limit(5)  // Only show latest 5 clients
-        .order('created_at', { ascending: false });
-      
-      if (error) throw error;
-      setClients(data);
-    } catch (err) {
-      console.error('Error fetching clients:', err);
-      setError(err.message);
-    } finally {
-      setLoading(false);
-    }
-  };
+    const fetchClients = async () => {
+      if (!user || !initialized) {
+        if (isMounted) {
+          setLoading(false);
+        }
+        return;
+      }
+
+      try {
+        if (isMounted) {
+          setLoading(true);
+          setError(null);
+        }
+
+        const { data, error } = await supabase
+          .from('clients')
+          .select('*')
+          .eq('user_id', user.id)  // Only fetch clients for current user
+          .limit(5)  // Only show latest 5 clients
+          .order('created_at', { ascending: false });
+        
+        if (error) throw error;
+        
+        if (isMounted) {
+          setClients(data || []);
+        }
+      } catch (err) {
+        console.error('Error fetching clients:', err);
+        if (isMounted) {
+          setError(err.message);
+        }
+      } finally {
+        if (isMounted) {
+          setLoading(false);
+        }
+      }
+    };
+
+    fetchClients();
+
+    return () => {
+      isMounted = false;
+    };
+  }, [user, initialized]); // Proper dependencies
+
+  if (!initialized) {
+    return (
+      <div className="col-span-full xl:col-span-6 bg-white dark:bg-gray-800 shadow-sm rounded-xl">
+        <div className="p-4 flex items-center justify-center">
+          <Loader2 className="h-8 w-8 animate-spin text-gray-500" />
+        </div>
+      </div>
+    );
+  }
+
+  if (!user) {
+    return (
+      <div className="col-span-full xl:col-span-6 bg-white dark:bg-gray-800 shadow-sm rounded-xl">
+        <div className="p-4 text-center text-gray-500 dark:text-gray-400">
+          Sign in to view your clients
+        </div>
+      </div>
+    );
+  }
 
   if (loading) {
     return (
@@ -77,8 +122,16 @@ const DashboardCardClients = () => {
             <tbody className="text-sm divide-y divide-gray-100 dark:divide-gray-700/60">
               {clients.length === 0 ? (
                 <tr>
-                  <td colSpan="3" className="p-2 text-center text-gray-500 dark:text-gray-400">
-                    No clients found
+                  <td colSpan="3" className="p-4 text-center text-gray-500 dark:text-gray-400">
+                    <div className="space-y-2">
+                      <p>No clients yet</p>
+                      <Link 
+                        to="/clients"
+                        className="inline-block text-indigo-500 hover:text-indigo-600 text-sm font-medium"
+                      >
+                        Add your first client →
+                      </Link>
+                    </div>
                   </td>
                 </tr>
               ) : (
