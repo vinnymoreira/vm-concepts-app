@@ -340,24 +340,35 @@ function ClientDetail() {
             
             {/* Header */}
             <div className="mb-8">
-              <div className="flex items-center justify-between">
-                <Link to="/clients" className="text-indigo-500 hover:text-indigo-600 flex items-center">
+              <div className="mb-4 flex justify-end">
+                <Link to="/clients" className="text-indigo-500 hover:text-indigo-600 flex items-center transition-colors">
                   ← Back to Clients
                 </Link>
+              </div>
+              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center text-white font-bold text-lg shadow-md">
+                    {client?.company ? client.company.charAt(0).toUpperCase() : 'C'}
+                  </div>
+                  <div>
+                    <h1 className="text-xl font-bold text-gray-900 dark:text-white">{client?.company || 'Unnamed Company'}</h1>
+                    <p className="text-sm text-gray-600 dark:text-gray-400">{client?.name || 'No contact name'}</p>
+                  </div>
+                </div>
                 <div className="flex space-x-2">
                   {isEditing ? (
                     <>
                       <button
                         onClick={handleSave}
                         disabled={loading}
-                        className="flex items-center px-4 py-2 bg-green-500 hover:bg-green-600 text-white rounded-lg transition-colors disabled:opacity-50"
+                        className="flex items-center px-4 py-2 bg-green-500 hover:bg-green-600 text-white rounded-lg transition-all duration-200 disabled:opacity-50 shadow-md hover:shadow-lg transform hover:scale-105"
                       >
                         <Save className="w-4 h-4 mr-2" />
                         Save
                       </button>
                       <button
                         onClick={handleCancel}
-                        className="flex items-center px-4 py-2 bg-gray-500 hover:bg-gray-600 text-white rounded-lg transition-colors"
+                        className="flex items-center px-4 py-2 bg-gray-500 hover:bg-gray-600 text-white rounded-lg transition-all duration-200 shadow-md hover:shadow-lg transform hover:scale-105"
                       >
                         <X className="w-4 h-4 mr-2" />
                         Cancel
@@ -367,14 +378,14 @@ function ClientDetail() {
                     <>
                       <button
                         onClick={() => setIsEditing(true)}
-                        className="flex items-center px-4 py-2 bg-indigo-500 hover:bg-indigo-600 text-white rounded-lg transition-colors"
+                        className="flex items-center px-4 py-2 bg-indigo-500 hover:bg-indigo-600 text-white rounded-lg transition-all duration-200 shadow-md hover:shadow-lg transform hover:scale-105"
                       >
                         <Edit2 className="w-4 h-4 mr-2" />
                         Edit
                       </button>
                       <button
                         onClick={deleteClient}
-                        className="flex items-center px-4 py-2 bg-red-500 hover:bg-red-600 text-white rounded-lg transition-colors"
+                        className="flex items-center px-4 py-2 bg-red-500 hover:bg-red-600 text-white rounded-lg transition-all duration-200 shadow-md hover:shadow-lg transform hover:scale-105"
                       >
                         <Trash2 className="w-4 h-4 mr-2" />
                         Delete
@@ -386,7 +397,7 @@ function ClientDetail() {
             </div>
 
             {/* Content */}
-            <div className="bg-white dark:bg-gray-800 shadow-sm rounded-lg p-6">
+            <div className="bg-white dark:bg-gray-800 shadow-lg rounded-xl p-8 border border-gray-100 dark:border-gray-700">
               {isEditing ? (
                 <EditClientForm
                   client={client}

@@ -1,6 +1,6 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { Link } from 'react-router-dom';
-import { PlusCircle, Edit, Trash, User } from 'lucide-react';
+import { PlusCircle, Edit, Trash, User, Search, Filter, X } from 'lucide-react';
 import { supabase } from '../supabaseClient';
 import { useAuth } from '../context/AuthContext';
 
@@ -8,19 +8,39 @@ import Sidebar from '../partials/Sidebar';
 import Header from '../partials/Header';
 import AddClientModal from '../partials/clients/AddClientModal';
 
-const ClientCard = ({ client }) => (
-  <div className="bg-white dark:bg-gray-800 shadow-sm rounded-lg p-6 flex flex-col justify-between hover:shadow-md transition-shadow duration-300">
-    <Link to={`/clients/${client.id}`} className="block">
-      <div className="flex gap-2">
-        <User className="w-12 h-12 text-indigo-500 mb-4" />
-        <div>
-          <h2 className="text-xl font-semibold mb-0">{client.company}</h2>
-          <p className="text-gray-500">{client.name}</p>
+const ClientCard = ({ client }) => {
+  const isActive = client.status === 'active';
+  
+  return (
+    <div className="bg-white dark:bg-gray-800 shadow-sm rounded-xl p-6 flex flex-col justify-between hover:shadow-lg hover:scale-[1.02] transition-all duration-300 border border-gray-100 dark:border-gray-700 group">
+      <Link to={`/clients/${client.id}`} className="block">
+        <div className="flex items-start gap-4">
+          <div className="relative">
+            <div className="w-12 h-12 rounded-lg bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center text-white font-bold text-lg shadow-md">
+              {client.company ? client.company.charAt(0).toUpperCase() : 'C'}
+            </div>
+            <div className={`absolute -bottom-1 -right-1 w-4 h-4 rounded-full border-2 border-white dark:border-gray-800 ${
+              isActive ? 'bg-green-500' : 'bg-gray-400'
+            }`}></div>
+          </div>
+          <div className="flex-1 min-w-0">
+            <h2 className="text-xl font-semibold mb-1 text-gray-900 dark:text-white group-hover:text-indigo-600 dark:group-hover:text-indigo-400 transition-colors duration-200 truncate">
+              {client.company || 'Unnamed Company'}
+            </h2>
+            <p className="text-gray-600 dark:text-gray-400 mb-2 truncate">{client.name || 'No contact name'}</p>
+            <div className="flex items-center gap-2">
+              {client.email && (
+                <span className="text-xs text-gray-500 dark:text-gray-400 truncate">
+                  {client.email}
+                </span>
+              )}
+            </div>
+          </div>
         </div>
-      </div>
-    </Link>
-  </div>
-);
+      </Link>
+    </div>
+  );
+};
 
 function Clients() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
@@ -28,6 +48,8 @@ function Clients() {
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [searchTerm, setSearchTerm] = useState('');
+  const [statusFilter, setStatusFilter] = useState('active');
   const { user, initialized } = useAuth(); // ✅ Get initialized from useAuth
 
   // ✅ FIXED: Proper useEffect with dependencies and cleanup
@@ -123,6 +145,25 @@ function Clients() {
     }
   };
 
+  // Filter and search clients
+  const filteredClients = useMemo(() => {
+    return clients.filter(client => {
+      const matchesSearch = !searchTerm || 
+        client.company?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        client.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        client.email?.toLowerCase().includes(searchTerm.toLowerCase());
+      
+      const matchesStatus = statusFilter === 'all' || client.status === statusFilter;
+      
+      return matchesSearch && matchesStatus;
+    });
+  }, [clients, searchTerm, statusFilter]);
+
+  const clearFilters = () => {
+    setSearchTerm('');
+    setStatusFilter('all');
+  };
+
   // ✅ Show loading while auth is initializing
   if (!initialized) {
     return (
@@ -210,39 +251,109 @@ function Clients() {
         <Header sidebarOpen={sidebarOpen} setSidebarOpen={setSidebarOpen} />
         <main className="grow">
           <div className="px-4 sm:px-6 lg:px-8 py-8 w-full mx-auto">
-            <div className="sm:flex sm:justify-between sm:items-center mb-8">
-              <div className="mb-4 sm:mb-0">
-                <h1 className="text-2xl md:text-3xl text-gray-800 dark:text-gray-100 font-bold">My Clients</h1>
+            <div className="mb-8">
+              <div className="sm:flex sm:justify-between sm:items-center mb-6">
+                <div className="mb-4 sm:mb-0">
+                  <h1 className="text-2xl md:text-3xl text-gray-800 dark:text-gray-100 font-bold">My Clients</h1>
+                  <p className="text-gray-600 dark:text-gray-400 mt-1">
+                    {filteredClients.length} of {clients.length} {clients.length === 1 ? 'client' : 'clients'}
+                    {(searchTerm || statusFilter !== 'all') && (
+                      <span className="ml-2">
+                        <button
+                          onClick={clearFilters}
+                          className="text-indigo-600 hover:text-indigo-800 dark:text-indigo-400 dark:hover:text-indigo-300 text-sm underline"
+                        >
+                          Clear filters
+                        </button>
+                      </span>
+                    )}
+                  </p>
+                </div>
+                <button
+                  onClick={() => setIsAddModalOpen(true)}
+                  className="btn bg-indigo-500 hover:bg-indigo-600 text-white shadow-lg hover:shadow-xl transition-all duration-200 transform hover:scale-105"
+                >
+                  <PlusCircle className="w-4 h-4 mr-2" />
+                  <span>Add Client</span>
+                </button>
               </div>
-              <button
-                onClick={() => setIsAddModalOpen(true)}
-                className="btn bg-indigo-500 hover:bg-indigo-600 text-white"
-              >
-                <PlusCircle className="w-4 h-4 mr-2" />
-                <span>Add Client</span>
-              </button>
+
+              {/* Search and Filter Bar */}
+              <div className="flex justify-end gap-4 mb-6">
+                <div className="relative w-80">
+                  <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
+                  <input
+                    type="text"
+                    placeholder="Search clients..."
+                    value={searchTerm}
+                    onChange={(e) => setSearchTerm(e.target.value)}
+                    className="w-full pl-10 pr-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 dark:bg-gray-700 dark:text-white"
+                  />
+                  {searchTerm && (
+                    <button
+                      onClick={() => setSearchTerm('')}
+                      className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
+                    >
+                      <X className="w-4 h-4" />
+                    </button>
+                  )}
+                </div>
+                <div className="relative">
+                  <Filter className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
+                  <select
+                    value={statusFilter}
+                    onChange={(e) => setStatusFilter(e.target.value)}
+                    className="pl-10 pr-8 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 dark:bg-gray-700 dark:text-white appearance-none bg-white dark:bg-gray-700"
+                  >
+                    <option value="all">All Status</option>
+                    <option value="active">Active</option>
+                    <option value="inactive">Inactive</option>
+                  </select>
+                </div>
+              </div>
             </div>
 
             {clients.length === 0 ? (
-              <div className="text-center py-12">
-                <User className="w-16 h-16 text-gray-400 mx-auto mb-4" />
-                <h3 className="text-lg font-medium text-gray-800 dark:text-gray-100 mb-2">
+              <div className="text-center py-16">
+                <div className="w-20 h-20 rounded-full bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center mx-auto mb-6">
+                  <User className="w-10 h-10 text-white" />
+                </div>
+                <h3 className="text-xl font-semibold text-gray-800 dark:text-gray-100 mb-2">
                   No clients yet
                 </h3>
-                <p className="text-gray-600 dark:text-gray-400 mb-6">
-                  Get started by adding your first client
+                <p className="text-gray-600 dark:text-gray-400 mb-8 max-w-md mx-auto">
+                  Get started by adding your first client to keep track of your business relationships
                 </p>
                 <button
                   onClick={() => setIsAddModalOpen(true)}
-                  className="btn bg-indigo-500 hover:bg-indigo-600 text-white"
+                  className="btn bg-indigo-500 hover:bg-indigo-600 text-white shadow-lg hover:shadow-xl transition-all duration-200 transform hover:scale-105"
                 >
                   <PlusCircle className="w-4 h-4 mr-2" />
                   <span>Add Your First Client</span>
                 </button>
               </div>
+            ) : filteredClients.length === 0 ? (
+              <div className="text-center py-16">
+                <div className="w-20 h-20 rounded-full bg-gray-100 dark:bg-gray-700 flex items-center justify-center mx-auto mb-6">
+                  <Search className="w-10 h-10 text-gray-400" />
+                </div>
+                <h3 className="text-xl font-semibold text-gray-800 dark:text-gray-100 mb-2">
+                  No clients found
+                </h3>
+                <p className="text-gray-600 dark:text-gray-400 mb-8 max-w-md mx-auto">
+                  No clients match your current search and filter criteria
+                </p>
+                <button
+                  onClick={clearFilters}
+                  className="btn bg-gray-500 hover:bg-gray-600 text-white"
+                >
+                  <X className="w-4 h-4 mr-2" />
+                  <span>Clear Filters</span>
+                </button>
+              </div>
             ) : (
-              <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4 gap-6">
-                {clients.map((client) => (
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-6">
+                {filteredClients.map((client) => (
                   <ClientCard
                     key={client.id}
                     client={client}

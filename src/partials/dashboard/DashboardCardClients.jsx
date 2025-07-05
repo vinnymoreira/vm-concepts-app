@@ -31,6 +31,7 @@ const DashboardCardClients = () => {
           .from('clients')
           .select('*')
           .eq('user_id', user.id)  // Only fetch clients for current user
+          .eq('status', 'active')  // Only fetch active clients
           .limit(5)  // Only show latest 5 clients
           .order('created_at', { ascending: false });
         
@@ -101,7 +102,7 @@ const DashboardCardClients = () => {
   return (
     <div className="col-span-full xl:col-span-6 bg-white dark:bg-gray-800 shadow-sm rounded-xl">
       <header className="px-5 py-4 border-b border-gray-100 dark:border-gray-700/60">
-        <h2 className="font-semibold text-gray-800 dark:text-gray-100">Recent Clients</h2>
+        <h2 className="font-semibold text-gray-800 dark:text-gray-100">Active Clients</h2>
       </header>      
       <div className="p-3">
         <div className="overflow-x-auto">
@@ -124,7 +125,7 @@ const DashboardCardClients = () => {
                 <tr>
                   <td colSpan="3" className="p-4 text-center text-gray-500 dark:text-gray-400">
                     <div className="space-y-2">
-                      <p>No clients yet</p>
+                      <p>No active clients yet</p>
                       <Link 
                         to="/clients"
                         className="inline-block text-indigo-500 hover:text-indigo-600 text-sm font-medium"
@@ -149,11 +150,8 @@ const DashboardCardClients = () => {
                       <div className="text-left text-gray-700 dark:text-gray-300">{client.name}</div>
                     </td>
                     <td className="p-2 whitespace-nowrap">
-                      <span className={`px-2 py-1 rounded-full text-xs font-medium
-                        ${client.status === 'active' ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200' :
-                          client.status === 'pending' ? 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200' :
-                          'bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-200'}`}>
-                        {client.status?.charAt(0).toUpperCase() + client.status?.slice(1) || 'Unknown'}
+                      <span className="px-2 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200">
+                        Active
                       </span>
                     </td>
                   </tr>
