@@ -294,9 +294,9 @@ const DashboardCardWeather = () => {
 
   return (
     <div className="col-span-full bg-white dark:bg-gray-800 shadow-sm rounded-xl">
-      <div className="px-5 py-5">
+      <div className="px-5 py-4">
         {/* Header */}
-        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-4">
+        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 mb-3">
           <div>
             <h2 className="text-lg font-semibold text-gray-800 dark:text-gray-100">
               Weather Forecast
@@ -364,6 +364,14 @@ const DashboardCardWeather = () => {
               </div>
 
               <div className="flex gap-2">
+                {userPreferences.default_city && (
+                <button
+                  onClick={clearDefault}
+                  className="px-4 py-2 bg-red-100 hover:bg-red-200 dark:bg-red-900/30 dark:hover:bg-red-900/50 text-red-600 dark:text-red-400 rounded-lg transition-colors"
+                >
+                  Clear
+                </button>
+                )}
                 <button
                   onClick={toggleUnit}
                   className={`px-4 py-2 rounded-lg border transition-colors ${
@@ -386,14 +394,6 @@ const DashboardCardWeather = () => {
                 </button>
               </div>
 
-              {userPreferences.default_city && (
-                <button
-                  onClick={clearDefault}
-                  className="px-4 py-2 bg-red-100 hover:bg-red-200 dark:bg-red-900/30 dark:hover:bg-red-900/50 text-red-600 dark:text-red-400 rounded-lg transition-colors"
-                >
-                  Clear
-                </button>
-              )}
             </div>
           </div>
         </div>
@@ -423,7 +423,7 @@ const DashboardCardWeather = () => {
                   </div>
                   <div>
                     <div className="flex items-baseline gap-1 justify-center sm:justify-start">
-                      <span className="text-4xl sm:text-5xl font-bold text-gray-800 dark:text-gray-100">
+                      <span className="text-4xl sm:text-5xl font-bold text-gray-700 dark:text-gray-100">
                         {Math.round(weather.current.temperature)}
                       </span>
                       <span className="text-xl sm:text-2xl text-gray-600 dark:text-gray-300">
@@ -527,22 +527,17 @@ const DashboardCardWeather = () => {
                             : 'bg-gray-50 dark:bg-gray-700 hover:bg-gray-100 dark:hover:bg-gray-600'
                         }`}
                       >
-                        <div className="text-lg sm:text-xl font-bold text-gray-500 dark:text-gray-400 mb-1">
+                        <div className="text-lg sm:text-xl font-bold text-gray-500 dark:text-gray-400">
                           {isToday(day.date) ? 'Today' : dateInfo.weekday}
                         </div>
-                        {!isToday(day.date) && (
-                          <div className="text-xs text-gray-500 dark:text-gray-400 mb-2 sm:mb-3">
-                            {dateInfo.monthDay}
-                          </div>
-                        )}
-                        {isToday(day.date) && (
-                          <div className="mb-2 sm:mb-3"></div>
-                        )}
-                        <div className="text-xl sm:text-2xl mb-2 sm:mb-3">
+                        <div className="text-xs text-gray-500 dark:text-gray-400">
+                          {dateInfo.monthDay}
+                        </div>
+                        <div className="text-xl sm:text-2xl mb-1">
                           {getWeatherIcon(day.weather_code)}
                         </div>
                         <div className="text-sm sm:text-base text-gray-600 dark:text-gray-300">
-                          {Math.round(day.temp_min)}° | <span className="font-bold text-gray-800 dark:text-gray-100">{Math.round(day.temp_max)}°</span>
+                          {Math.round(day.temp_min)}° | <span className="font-bold">{Math.round(day.temp_max)}°</span>
                         </div>
                       </div>
                     );

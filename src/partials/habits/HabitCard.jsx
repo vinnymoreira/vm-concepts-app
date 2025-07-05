@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { Plus, Minus, DollarSign, Calendar, TrendingUp, TrendingDown } from 'lucide-react';
 
-const HabitCard = ({ habit, habitLogs = [], onLogHabit, onHabitClick }) => {
+const HabitCard = ({ habit, habitLogs = [], onLogHabit, onDeleteLog, onHabitClick }) => {
   const [isLogging, setIsLogging] = useState(false);
   const [logQuantity, setLogQuantity] = useState(1);
   const [logCost, setLogCost] = useState('');
@@ -10,25 +10,66 @@ const HabitCard = ({ habit, habitLogs = [], onLogHabit, onHabitClick }) => {
   const todayLog = habitLogs.find(log => log.log_date === today);
   const isCompletedToday = !!todayLog;
 
-  // Calculate streak
+  // Calculate streak based on habit frequency
   const calculateStreak = () => {
     if (!habitLogs || habitLogs.length === 0) return 0;
     
     const sortedLogs = habitLogs
       .sort((a, b) => new Date(b.log_date) - new Date(a.log_date));
     
-    let streak = 0;
-    let currentDate = new Date();
+    const today = new Date();
+    const todayStr = today.toISOString().split('T')[0];
     
-    for (const log of sortedLogs) {
-      const logDate = new Date(log.log_date);
-      const daysDiff = Math.floor((currentDate - logDate) / (1000 * 60 * 60 * 24));
+    // Get the frequency period in days
+    const getFrequencyDays = () => {
+      switch (habit.frequency_period) {
+        case 'weekly': return 7;
+        case 'monthly': return 30;
+        case 'daily':
+        default: return 1;
+      }
+    };
+    
+    const frequencyDays = getFrequencyDays();
+    let streak = 0;
+    let currentPeriodStart = new Date(today);
+    
+    // For daily habits, use the original logic
+    if (frequencyDays === 1) {
+      let expectedDate = new Date(today);
       
-      if (daysDiff === streak) {
-        streak++;
-        currentDate.setDate(currentDate.getDate() - 1);
-      } else {
-        break;
+      for (const log of sortedLogs) {
+        const logDate = new Date(log.log_date);
+        const expectedDateStr = expectedDate.toISOString().split('T')[0];
+        
+        if (log.log_date === expectedDateStr) {
+          streak++;
+          expectedDate.setDate(expectedDate.getDate() - 1);
+        } else {
+          break;
+        }
+      }
+    } else {
+      // For weekly/monthly habits, check if there's a log in each period
+      for (let period = 0; period < 52; period++) { // Max 52 periods to check
+        const periodEnd = new Date(currentPeriodStart);
+        const periodStart = new Date(currentPeriodStart);
+        periodStart.setDate(periodStart.getDate() - frequencyDays + 1);
+        
+        const periodStartStr = periodStart.toISOString().split('T')[0];
+        const periodEndStr = periodEnd.toISOString().split('T')[0];
+        
+        // Check if there's a log in this period
+        const hasLogInPeriod = sortedLogs.some(log => 
+          log.log_date >= periodStartStr && log.log_date <= periodEndStr
+        );
+        
+        if (hasLogInPeriod) {
+          streak++;
+          currentPeriodStart.setDate(currentPeriodStart.getDate() - frequencyDays);
+        } else {
+          break;
+        }
       }
     }
     
@@ -45,7 +86,25 @@ const HabitCard = ({ habit, habitLogs = [], onLogHabit, onHabitClick }) => {
       weekAgo.setDate(weekAgo.getDate() - 7);
       return logDate >= weekAgo;
     })
-    .reduce((sum, log) => sum + (log.cost || 0), 0);
+    .reduce((sum, log) => {
+      if (!habit.cost_per_unit) return sum;
+      
+      // Use log.cost if available, otherwise calculate from habit.cost_per_unit * quantity
+      const cost = log.cost || (parseFloat(habit.cost_per_unit) * (log.quantity || 1));
+      
+      if (habit.category === 'healthy') {
+        // For healthy habits, all costs are "spent"
+        return sum + cost;
+      } else if (habit.category === 'unhealthy') {
+        // For unhealthy habits, distinguish between saved (success) and spent (slipped)
+        if (log.notes === 'success') {
+          return sum + cost; // Money saved by avoiding
+        }
+        // If slipped, we don't add to "saved" - this would be money lost/spent
+      }
+      
+      return sum;
+    }, 0);
 
   const handleQuickLog = () => {
     if (habit.category === 'unhealthy') {
@@ -53,8 +112,12 @@ const HabitCard = ({ habit, habitLogs = [], onLogHabit, onHabitClick }) => {
       onLogHabit(habit.id, 1, habit.is_consumable ? habit.cost_per_unit : null, 'success');
     } else {
       // For healthy habits, normal logging
-      onLogHabit(habit.id, 1, habit.is_consumable ? habit.cost_per_unit : null);
+      onLogHabit(habit.id, 1, habit.is_consumable ? habit.cost_per_unit : null, 'completed');
     }
+  };
+
+  const handleRemoveLog = () => {
+    onDeleteLog(habit.id);
   };
 
   const handleDetailedLog = () => {
@@ -75,57 +138,79 @@ const HabitCard = ({ habit, habitLogs = [], onLogHabit, onHabitClick }) => {
     setLogCost('');
   };
 
-  const categoryGradient = habit.category === 'healthy' 
-    ? 'from-emerald-500 to-teal-600' 
-    : 'from-rose-500 to-pink-600';
+  // Use habit color if available, otherwise fallback to category colors
+  const getColorBasedStyles = () => {
+    if (habit.color) {
+      // Convert hex color to RGB for alpha backgrounds
+      const hexToRgb = (hex) => {
+        const result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
+        return result ? {
+          r: parseInt(result[1], 16),
+          g: parseInt(result[2], 16),
+          b: parseInt(result[3], 16)
+        } : null;
+      };
+      
+      const rgb = hexToRgb(habit.color);
+      if (rgb) {
+        return {
+          borderColor: habit.color,
+          bgLight: `rgba(${rgb.r}, ${rgb.g}, ${rgb.b}, 0.1)`,
+          bgDark: `rgba(${rgb.r}, ${rgb.g}, ${rgb.b}, 0.2)`
+        };
+      }
+    }
+    
+    // Fallback to category colors
+    return habit.category === 'healthy' 
+      ? {
+          borderColor: '#34d399', // emerald-400
+          bgLight: 'rgba(52, 211, 153, 0.1)',
+          bgDark: 'rgba(52, 211, 153, 0.2)'
+        }
+      : {
+          borderColor: '#fb7185', // rose-400 
+          bgLight: 'rgba(251, 113, 133, 0.1)',
+          bgDark: 'rgba(251, 113, 133, 0.2)'
+        };
+  };
   
-  const categoryBg = habit.category === 'healthy'
-    ? 'bg-emerald-50 dark:bg-emerald-950/50'
-    : 'bg-rose-50 dark:bg-rose-950/50';
+  const colorStyles = getColorBasedStyles();
+  
+  const categoryIconBg = 'bg-gray-50 dark:bg-gray-800';
 
   const categoryIcon = habit.category === 'healthy' ? TrendingUp : TrendingDown;
   const CategoryIcon = categoryIcon;
 
   return (
-    <div className={`group relative bg-white dark:bg-gray-900 rounded-2xl shadow-sm hover:shadow-xl transition-all duration-300 border border-gray-100 dark:border-gray-800 overflow-hidden`}>
-      {/* Gradient top border */}
-      <div className={`h-1 bg-gradient-to-r ${categoryGradient}`} />
+    <div 
+      className="group relative bg-white dark:bg-gray-800 rounded-xl shadow-sm hover:shadow-xl transition-all duration-300 border border-gray-100 dark:border-gray-700 border-t-4 overflow-hidden cursor-pointer"
+      style={{ 
+        borderTopColor: colorStyles.borderColor
+      }}
+      onClick={() => onHabitClick(habit)}
+      title="Click to view habit details"
+    >
       
       <div className="p-6">
         {/* Header */}
-        <div className="flex items-start justify-between mb-4">
-          <div className="flex items-center space-x-3 cursor-pointer" onClick={() => onHabitClick(habit)}>
-            <div className={`w-12 h-12 rounded-xl ${categoryBg} flex items-center justify-center text-lg group-hover:scale-110 transition-transform duration-200`}>
-              {habit.icon || (habit.category === 'healthy' ? '💚' : '⚠️')}
+        <div className="flex items-start gap-4 mb-4">
+          <div className="flex items-center gap-3 flex-1 min-w-0">
+            <div className="relative">
+              <div className={`w-12 h-12 rounded-lg ${categoryIconBg} flex items-center justify-center text-gray-600 dark:text-gray-400 font-bold text-lg shadow-md`}>
+                {habit.icon || (habit.category === 'healthy' ? '💚' : '⚠️')}
+              </div>
             </div>
-            <div>
-              <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 group-hover:text-gray-700 dark:group-hover:text-gray-300 transition-colors">
+            <div className="flex-1 min-w-0">
+              <h3 className="text-lg font-semibold mb-1 text-gray-900 dark:text-white group-hover:text-indigo-600 dark:group-hover:text-indigo-400 transition-colors duration-200 truncate">
                 {habit.name}
               </h3>
-              <div className="flex items-center space-x-2 text-sm text-gray-500 dark:text-gray-400">
+              <div className="flex items-center gap-2">
                 <CategoryIcon className={`w-4 h-4 ${habit.category === 'healthy' ? 'text-emerald-500' : 'text-rose-500'}`} />
-                <span className="capitalize font-medium">{habit.category === 'healthy' ? 'Healthy' : 'Vice'}</span>
+                <span className="text-sm text-gray-600 dark:text-gray-400 font-medium capitalize">{habit.category === 'healthy' ? 'Healthy Habit' : 'Vice to Avoid'}</span>
               </div>
             </div>
           </div>
-          
-          {/* Status Badge with modern styling */}
-          {isCompletedToday && (
-            <div className={`px-3 py-1.5 rounded-full text-xs font-semibold ${
-              habit.category === 'healthy' 
-                ? 'bg-emerald-100 dark:bg-emerald-900/50 text-emerald-700 dark:text-emerald-300 ring-1 ring-emerald-200 dark:ring-emerald-800'
-                : todayLog?.notes === 'success'
-                  ? 'bg-emerald-100 dark:bg-emerald-900/50 text-emerald-700 dark:text-emerald-300 ring-1 ring-emerald-200 dark:ring-emerald-800'
-                  : 'bg-rose-100 dark:bg-rose-900/50 text-rose-700 dark:text-rose-300 ring-1 ring-rose-200 dark:ring-rose-800'
-            }`}>
-              {habit.category === 'healthy' 
-                ? '✓ Completed' 
-                : todayLog?.notes === 'success' 
-                  ? '✓ Success' 
-                  : '⚠ Relapsed'
-              }
-            </div>
-          )}
         </div>
 
         {/* Description with modern typography */}
@@ -148,7 +233,11 @@ const HabitCard = ({ habit, habitLogs = [], onLogHabit, onHabitClick }) => {
           
           {habit.is_consumable ? (
             <div className="bg-gray-50 dark:bg-gray-800/50 rounded-xl p-3 text-center">
-              <div className="text-2xl font-bold text-orange-600 dark:text-orange-400">
+              <div className={`text-2xl font-bold ${
+                habit.category === 'unhealthy' 
+                  ? 'text-green-600 dark:text-green-400' 
+                  : 'text-orange-600 dark:text-orange-400'
+              }`}>
                 ${weeklyTotal.toFixed(2)}
               </div>
               <div className="text-xs text-gray-500 dark:text-gray-400 font-medium">
@@ -169,44 +258,54 @@ const HabitCard = ({ habit, habitLogs = [], onLogHabit, onHabitClick }) => {
 
         {/* Updated Action Buttons */}
         {!isLogging ? (
-          <div className="flex space-x-2">
-            {habit.category === 'healthy' ? (
-              <>
-                <button
-                  onClick={handleQuickLog}
-                  disabled={isCompletedToday}
-                  className={`flex-1 py-3 px-4 rounded-xl text-sm font-semibold transition-all duration-200 ${
-                    isCompletedToday
-                      ? 'bg-gray-100 dark:bg-gray-800 text-gray-400 cursor-not-allowed'
-                      : 'bg-green-600 text-white hover:bg-green-700 shadow-lg hover:shadow-xl'
-                  }`}
-                >
-                  {isCompletedToday ? 'Completed Today' : 'Mark Complete'}
-                </button>
-                
-                <button
-                  onClick={() => setIsLogging(true)}
-                  className="py-3 px-4 bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 rounded-xl hover:bg-gray-200 dark:hover:bg-gray-700 transition-all duration-200"
-                >
-                  <Plus className="w-4 h-4" />
-                </button>
-              </>
-            ) : (
+          <div className="space-y-2" onClick={(e) => e.stopPropagation()}>
+            {isCompletedToday ? (
               <button
-                onClick={handleQuickLog}
-                disabled={isCompletedToday}
-                className={`w-full py-3 px-4 rounded-xl text-sm font-semibold transition-all duration-200 ${
-                  isCompletedToday
-                    ? 'bg-gray-100 dark:bg-gray-800 text-gray-400 cursor-not-allowed'
-                    : 'bg-green-600 text-white hover:bg-green-700 shadow-lg hover:shadow-xl'
-                }`}
+                onClick={handleRemoveLog}
+                className="w-full py-3 px-4 rounded-xl text-sm font-semibold bg-green-50 dark:bg-green-900/20 text-green-700 dark:text-green-300 border border-green-200 dark:border-green-800 hover:bg-green-100 dark:hover:bg-green-900/40 transition-all duration-200"
               >
-                {isCompletedToday ? 'Logged Today' : 'Avoided Today'}
+                {habit.category === 'healthy' ? '✓ Completed Today' : '✓ Successfully Avoided'}
               </button>
+            ) : (
+              <div className="flex space-x-2">
+                {habit.category === 'healthy' ? (
+                  <>
+                    <button
+                      onClick={handleQuickLog}
+                      className="flex-1 py-3 px-4 rounded-xl text-sm font-semibold bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600 transition-all duration-200"
+                    >
+                      Mark Complete
+                    </button>
+                    
+                    <button
+                      onClick={() => setIsLogging(true)}
+                      className="py-3 px-4 bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 rounded-xl hover:bg-gray-200 dark:hover:bg-gray-700 transition-all duration-200"
+                    >
+                      <Plus className="w-4 h-4" />
+                    </button>
+                  </>
+                ) : (
+                  <>
+                    <button
+                      onClick={handleQuickLog}
+                      className="flex-1 py-3 px-4 rounded-xl text-sm font-semibold bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600 transition-all duration-200"
+                    >
+                      Successfully Avoided
+                    </button>
+                    
+                    <button
+                      onClick={() => setIsLogging(true)}
+                      className="py-3 px-4 bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 rounded-xl hover:bg-gray-200 dark:hover:bg-gray-700 transition-all duration-200"
+                    >
+                      <Plus className="w-4 h-4" />
+                    </button>
+                  </>
+                )}
+              </div>
             )}
           </div>
         ) : (
-          <div className="space-y-4 p-4 bg-gray-50 dark:bg-gray-800/50 rounded-xl">
+          <div className="space-y-4 p-4 bg-gray-50 dark:bg-gray-800/50 rounded-xl" onClick={(e) => e.stopPropagation()}>
             <div className="flex space-x-2">
               <button
                 onClick={() => setLogQuantity(Math.max(1, logQuantity - 1))}
@@ -296,15 +395,6 @@ const HabitCard = ({ habit, habitLogs = [], onLogHabit, onHabitClick }) => {
                       : 'text-orange-700 bg-orange-100 dark:text-orange-300 dark:bg-orange-900/50'
                   }`}>
                     ${todayLog.cost.toFixed(2)} {habit.category === 'unhealthy' ? 'saved' : 'spent'}
-                  </span>
-                )}
-                {habit.category === 'unhealthy' && todayLog.notes && (
-                  <span className={`text-xs px-2 py-1 rounded-full font-medium ${
-                    todayLog.notes === 'success' 
-                      ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-900/50 dark:text-emerald-200'
-                      : 'bg-rose-100 text-rose-800 dark:bg-rose-900/50 dark:text-rose-200'
-                  }`}>
-                    {todayLog.notes}
                   </span>
                 )}
               </div>

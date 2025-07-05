@@ -1,10 +1,92 @@
 import React, { useState } from 'react';
-import { X, Calendar, TrendingUp, TrendingDown, DollarSign, Target } from 'lucide-react';
+import { X, Calendar, TrendingUp, TrendingDown, DollarSign, Target, Edit3, Save, RotateCcw, Trash2 } from 'lucide-react';
 
-const HabitDetailModal = ({ habit, habitLogs = [], onClose, onLogHabit }) => {
+const HabitDetailModal = ({ habit, habitLogs = [], onClose, onLogHabit, onDeleteLog, onUpdateHabit, onDeleteHabit }) => {
   const [selectedPeriod, setSelectedPeriod] = useState('week'); // 'week', 'month', 'year'
+  const [isEditing, setIsEditing] = useState(false);
+  const [editForm, setEditForm] = useState({
+    name: habit?.name || '',
+    description: habit?.description || '',
+    target_frequency: habit?.target_frequency || 1,
+    frequency_period: habit?.frequency_period || 'daily',
+    unit: habit?.unit || 'times',
+    cost_per_unit: habit?.cost_per_unit || '',
+    icon: habit?.icon || '📋',
+    color: habit?.color || '#6366f1'
+  });
+
+  const commonIcons = {
+    healthy: ['💪', '🏃‍♂️', '📖', '🧘‍♀️', '💧', '🥗', '😴', '🚶‍♀️', '🏋️‍♂️', '🧠', '🎯'],
+    unhealthy: ['🚬', '🍺', '🍔', '📱', '🎮', '☕', '🍰', '🛋️', '📺', '🛒', '💸']
+  };
+
+  const predefinedColors = [
+    // Solid colors (Trello-inspired)
+    '#ef4444', // Red
+    '#f97316', // Orange  
+    '#eab308', // Yellow
+    '#22c55e', // Green
+    '#06b6d4', // Cyan
+    '#3b82f6', // Blue
+    '#8b5cf6', // Purple
+    '#ec4899', // Pink
+    
+    // Pastel colors
+    '#fca5a5', // Light red
+    '#fed7aa', // Light orange
+    '#fde68a', // Light yellow
+    '#bbf7d0', // Light green
+    '#a7f3d0', // Light emerald
+    '#bfdbfe', // Light blue
+    '#ddd6fe', // Light purple
+    '#fbcfe8'  // Light pink
+  ];
 
   if (!habit) return null;
+
+  // Handle edit form changes
+  const handleEditChange = (e) => {
+    const { name, value } = e.target;
+    setEditForm(prev => ({
+      ...prev,
+      [name]: value
+    }));
+  };
+
+  // Handle save edit
+  const handleSaveEdit = () => {
+    const updates = {
+      ...editForm,
+      cost_per_unit: editForm.cost_per_unit ? parseFloat(editForm.cost_per_unit) : null
+    };
+    onUpdateHabit(habit.id, updates);
+    setIsEditing(false);
+  };
+
+  // Handle cancel edit
+  const handleCancelEdit = () => {
+    setEditForm({
+      name: habit.name,
+      description: habit.description || '',
+      target_frequency: habit.target_frequency || 1,
+      frequency_period: habit.frequency_period || 'daily',
+      unit: habit.unit || 'times',
+      cost_per_unit: habit.cost_per_unit || '',
+      icon: habit.icon || '📋',
+      color: habit.color || '#6366f1'
+    });
+    setIsEditing(false);
+  };
+
+  // Handle delete habit
+  const handleDeleteHabit = () => {
+    const confirmMessage = `Are you sure you want to delete "${habit.name}"? This will permanently remove the habit and all its logs. This action cannot be undone.`;
+    
+    if (window.confirm(confirmMessage)) {
+      onDeleteHabit(habit.id);
+      onClose();
+    }
+  };
 
   // Calculate statistics
   const calculateStats = () => {
@@ -30,7 +112,25 @@ const HabitDetailModal = ({ habit, habitLogs = [], onClose, onLogHabit }) => {
     );
 
     const totalQuantity = periodLogs.reduce((sum, log) => sum + log.quantity, 0);
-    const totalCost = periodLogs.reduce((sum, log) => sum + (log.cost || 0), 0);
+    const totalCost = periodLogs.reduce((sum, log) => {
+      if (!habit.cost_per_unit) return sum;
+      
+      // Use log.cost if available, otherwise calculate from habit.cost_per_unit * quantity
+      const cost = log.cost || (parseFloat(habit.cost_per_unit) * (log.quantity || 1));
+      
+      if (habit.category === 'healthy') {
+        // For healthy habits, all costs are "spent"
+        return sum + cost;
+      } else if (habit.category === 'unhealthy') {
+        // For unhealthy habits, show money saved when successfully avoided
+        if (log.notes === 'success') {
+          return sum + cost; // Money saved by avoiding
+        }
+        // Note: If slipped, this could be tracked separately as "money lost"
+      }
+      
+      return sum;
+    }, 0);
     const avgQuantity = periodLogs.length > 0 ? totalQuantity / periodLogs.length : 0;
     const totalDays = Math.ceil((now - startDate) / (1000 * 60 * 60 * 24));
     const completedDays = periodLogs.length;
@@ -49,25 +149,64 @@ const HabitDetailModal = ({ habit, habitLogs = [], onClose, onLogHabit }) => {
 
   const stats = calculateStats();
 
-  // Calculate current streak
+  // Calculate current streak based on habit frequency
   const calculateStreak = () => {
     if (!habitLogs || habitLogs.length === 0) return 0;
     
     const sortedLogs = habitLogs
       .sort((a, b) => new Date(b.log_date) - new Date(a.log_date));
     
-    let streak = 0;
-    let currentDate = new Date();
+    const today = new Date();
     
-    for (const log of sortedLogs) {
-      const logDate = new Date(log.log_date);
-      const daysDiff = Math.floor((currentDate - logDate) / (1000 * 60 * 60 * 24));
+    // Get the frequency period in days
+    const getFrequencyDays = () => {
+      switch (habit.frequency_period) {
+        case 'weekly': return 7;
+        case 'monthly': return 30;
+        case 'daily':
+        default: return 1;
+      }
+    };
+    
+    const frequencyDays = getFrequencyDays();
+    let streak = 0;
+    let currentPeriodStart = new Date(today);
+    
+    // For daily habits, use consecutive day logic
+    if (frequencyDays === 1) {
+      let expectedDate = new Date(today);
       
-      if (daysDiff === streak) {
-        streak++;
-        currentDate.setDate(currentDate.getDate() - 1);
-      } else {
-        break;
+      for (const log of sortedLogs) {
+        const expectedDateStr = expectedDate.toISOString().split('T')[0];
+        
+        if (log.log_date === expectedDateStr) {
+          streak++;
+          expectedDate.setDate(expectedDate.getDate() - 1);
+        } else {
+          break;
+        }
+      }
+    } else {
+      // For weekly/monthly habits, check if there's a log in each period
+      for (let period = 0; period < 52; period++) { // Max 52 periods to check
+        const periodEnd = new Date(currentPeriodStart);
+        const periodStart = new Date(currentPeriodStart);
+        periodStart.setDate(periodStart.getDate() - frequencyDays + 1);
+        
+        const periodStartStr = periodStart.toISOString().split('T')[0];
+        const periodEndStr = periodEnd.toISOString().split('T')[0];
+        
+        // Check if there's a log in this period
+        const hasLogInPeriod = sortedLogs.some(log => 
+          log.log_date >= periodStartStr && log.log_date <= periodEndStr
+        );
+        
+        if (hasLogInPeriod) {
+          streak++;
+          currentPeriodStart.setDate(currentPeriodStart.getDate() - frequencyDays);
+        } else {
+          break;
+        }
       }
     }
     
@@ -131,36 +270,209 @@ const HabitDetailModal = ({ habit, habitLogs = [], onClose, onLogHabit }) => {
         {/* Header */}
         <div className="p-6 border-b border-gray-200 dark:border-gray-700">
           <div className="flex justify-between items-start">
-            <div className="flex items-center space-x-4">
-              <span className="text-4xl">{habit.icon || '📋'}</span>
-              <div>
-                <h2 className="text-2xl font-bold text-gray-800 dark:text-gray-100">
-                  {habit.name}
-                </h2>
-                <div className="flex items-center space-x-2 text-sm text-gray-500 dark:text-gray-400">
-                  <CategoryIcon className={`w-4 h-4 ${categoryColor}`} />
-                  <span className="capitalize">{habit.category} Habit</span>
+            <div className="flex items-center space-x-4 flex-1">
+              {isEditing ? (
+                <div className="flex-1 space-y-4">
+                  <div className="flex items-center space-x-4">
+                    <span className="text-4xl">{editForm.icon}</span>
+                    <div className="flex-1">
+                      <input
+                        type="text"
+                        name="name"
+                        value={editForm.name}
+                        onChange={handleEditChange}
+                        className="text-2xl font-bold text-gray-800 dark:text-gray-100 bg-transparent border-b-2 border-indigo-300 focus:border-indigo-500 outline-none w-full"
+                        placeholder="Habit name"
+                      />
+                    </div>
+                  </div>
+                  
+                  <div className="grid grid-cols-3 gap-4">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-600 dark:text-gray-400 mb-1">
+                        Target
+                      </label>
+                      <input
+                        type="number"
+                        name="target_frequency"
+                        value={editForm.target_frequency}
+                        onChange={handleEditChange}
+                        min="1"
+                        className="w-full px-3 py-2 bg-gray-50 dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-indigo-500 text-sm"
+                      />
+                    </div>
+                    
+                    <div>
+                      <label className="block text-sm font-medium text-gray-600 dark:text-gray-400 mb-1">
+                        Unit
+                      </label>
+                      <input
+                        type="text"
+                        name="unit"
+                        value={editForm.unit}
+                        onChange={handleEditChange}
+                        className="w-full px-3 py-2 bg-gray-50 dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-indigo-500 text-sm"
+                        placeholder="times, minutes, pages"
+                      />
+                    </div>
+                    
+                    <div>
+                      <label className="block text-sm font-medium text-gray-600 dark:text-gray-400 mb-1">
+                        Per
+                      </label>
+                      <select
+                        name="frequency_period"
+                        value={editForm.frequency_period}
+                        onChange={handleEditChange}
+                        className="w-full px-3 py-2 bg-gray-50 dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-indigo-500 text-sm"
+                      >
+                        <option value="daily">Day</option>
+                        <option value="weekly">Week</option>
+                        <option value="monthly">Month</option>
+                      </select>
+                    </div>
+                  </div>
+                  
+                  <div>
+                    <label className="block text-sm font-medium text-gray-600 dark:text-gray-400 mb-1">
+                      Description (optional)
+                    </label>
+                    <textarea
+                      name="description"
+                      value={editForm.description}
+                      onChange={handleEditChange}
+                      rows="2"
+                      className="w-full px-3 py-2 bg-gray-50 dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-indigo-500 text-sm"
+                      placeholder="Optional description"
+                    />
+                  </div>
+                  
                   {habit.is_consumable && (
-                    <>
-                      <span>•</span>
-                      <DollarSign className="w-4 h-4" />
-                      <span>Consumable</span>
-                    </>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-600 dark:text-gray-400 mb-1">
+                        Cost per {editForm.unit} ($)
+                      </label>
+                      <input
+                        type="number"
+                        name="cost_per_unit"
+                        value={editForm.cost_per_unit}
+                        onChange={handleEditChange}
+                        step="0.01"
+                        min="0"
+                        className="w-full px-3 py-2 bg-gray-50 dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-indigo-500 text-sm"
+                        placeholder="0.00"
+                      />
+                    </div>
                   )}
+                  
+                  {/* Icon Selection */}
+                  <div>
+                    <label className="block text-sm font-medium text-gray-600 dark:text-gray-400 mb-2">
+                      Choose Icon
+                    </label>
+                    <div className="grid grid-cols-11 gap-2">
+                      {commonIcons[habit.category].map((icon, index) => (
+                        <button
+                          key={index}
+                          type="button"
+                          onClick={() => setEditForm(prev => ({ ...prev, icon }))}
+                          className={`w-8 h-8 text-lg rounded-lg border-2 transition-all duration-200 hover:scale-105 ${
+                            editForm.icon === icon 
+                              ? 'border-indigo-500 bg-indigo-50 dark:bg-indigo-950/50 scale-105' 
+                              : 'border-gray-200 dark:border-gray-600 hover:border-indigo-300 dark:hover:border-indigo-500'
+                          }`}
+                        >
+                          {icon}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Color Selection */}
+                  <div>
+                    <label className="block text-sm font-medium text-gray-600 dark:text-gray-400 mb-2">
+                      Choose Color
+                    </label>
+                    <div className="flex flex-wrap gap-2">
+                      {predefinedColors.map((color, index) => (
+                        <button
+                          key={index}
+                          type="button"
+                          onClick={() => setEditForm(prev => ({ ...prev, color }))}
+                          className={`w-6 h-6 rounded-md border-2 transition-all duration-200 hover:scale-110 ${
+                            editForm.color === color 
+                              ? 'border-gray-800 dark:border-gray-200 scale-110 dark:ring-gray-600'
+                              : 'border-gray-300 dark:border-gray-600'
+                          }`}
+                          style={{ backgroundColor: color }}
+                        />
+                      ))}
+                    </div>
+                  </div>
                 </div>
-                {habit.description && (
-                  <p className="text-gray-600 dark:text-gray-400 mt-2">
-                    {habit.description}
-                  </p>
-                )}
-              </div>
+              ) : (
+                <>
+                  <span className="text-4xl">{habit.icon || '📋'}</span>
+                  <div>
+                    <h2 className="text-2xl font-bold text-gray-800 dark:text-gray-100">
+                      {habit.name}
+                    </h2>
+                    <div className="flex items-center space-x-2 text-sm text-gray-500 dark:text-gray-400">
+                      <CategoryIcon className={`w-4 h-4 ${categoryColor}`} />
+                      <span className="capitalize">{habit.category} Habit</span>
+                      {habit.is_consumable && (
+                        <>
+                          <span>•</span>
+                          <DollarSign className="w-4 h-4" />
+                          <span>Consumable</span>
+                        </>
+                      )}
+                    </div>
+                    {habit.description && (
+                      <p className="text-gray-600 dark:text-gray-400 mt-2">
+                        {habit.description}
+                      </p>
+                    )}
+                  </div>
+                </>
+              )}
             </div>
-            <button 
-              onClick={onClose} 
-              className="text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200"
-            >
-              <X className="w-6 h-6" />
-            </button>
+            
+            <div className="flex items-center space-x-2">
+              {isEditing ? (
+                <>
+                  <button 
+                    onClick={handleSaveEdit}
+                    className="p-2 text-green-600 hover:text-green-700 dark:text-green-400 dark:hover:text-green-300 rounded-lg hover:bg-green-50 dark:hover:bg-green-900/20 transition-colors"
+                    title="Save changes"
+                  >
+                    <Save className="w-5 h-5" />
+                  </button>
+                  <button 
+                    onClick={handleCancelEdit}
+                    className="p-2 text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
+                    title="Cancel editing"
+                  >
+                    <RotateCcw className="w-5 h-5" />
+                  </button>
+                </>
+              ) : (
+                <button 
+                  onClick={() => setIsEditing(true)}
+                  className="p-2 text-indigo-600 hover:text-indigo-700 dark:text-indigo-400 dark:hover:text-indigo-300 rounded-lg hover:bg-indigo-50 dark:hover:bg-indigo-900/20 transition-colors"
+                  title="Edit habit"
+                >
+                  <Edit3 className="w-5 h-5" />
+                </button>
+              )}
+              
+              <button 
+                onClick={onClose} 
+                className="p-2 text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
+              >
+                <X className="w-6 h-6" />
+              </button>
+            </div>
           </div>
         </div>
 
@@ -207,10 +519,16 @@ const HabitDetailModal = ({ habit, habitLogs = [], onClose, onLogHabit }) => {
             
             {habit.is_consumable ? (
               <div className="bg-gray-50 dark:bg-gray-700 p-4 rounded-lg text-center">
-                <div className="text-2xl font-bold text-orange-500">
+                <div className={`text-2xl font-bold ${
+                  habit.category === 'healthy' 
+                    ? 'text-orange-500' 
+                    : 'text-green-500'
+                }`}>
                   {formatCurrency(stats.totalCost)}
                 </div>
-                <div className="text-sm text-gray-500 dark:text-gray-400">Total Spent</div>
+                <div className="text-sm text-gray-500 dark:text-gray-400">
+                  {habit.category === 'healthy' ? 'Total Spent' : 'Total Saved'}
+                </div>
               </div>
             ) : (
               <div className="bg-gray-50 dark:bg-gray-700 p-4 rounded-lg text-center">
@@ -321,7 +639,7 @@ const HabitDetailModal = ({ habit, habitLogs = [], onClose, onLogHabit }) => {
                               {formatCurrency(log.cost)}
                             </span>
                           )}
-                          {log.notes && (
+                          {log.notes && habit.category === 'healthy' && (
                             <span className="text-xs text-gray-500 dark:text-gray-400 max-w-32 truncate" title={log.notes}>
                               "{log.notes}"
                             </span>
@@ -373,29 +691,46 @@ const HabitDetailModal = ({ habit, habitLogs = [], onClose, onLogHabit }) => {
           )}
 
           {/* Action Buttons */}
-          <div className="flex justify-end space-x-4">
+          <div className="flex justify-between items-center">
             <button
-              onClick={onClose}
-              className="px-6 py-3 text-sm font-medium text-gray-700 bg-gray-200 dark:bg-gray-600 dark:text-gray-300 rounded-lg hover:bg-gray-300 dark:hover:bg-gray-500 transition-colors"
+              onClick={handleDeleteHabit}
+              className="px-6 py-3 text-sm font-medium text-red-700 bg-red-50 dark:bg-red-900/20 dark:text-red-400 rounded-lg hover:bg-red-100 dark:hover:bg-red-900/40 transition-colors border border-red-200 dark:border-red-800 flex items-center space-x-2"
             >
-              Close
+              <Trash2 className="w-4 h-4" />
+              <span>Delete Habit</span>
             </button>
-            <button
-              onClick={() => {
-                const today = new Date().toISOString().split('T')[0];
-                const todayLog = habitLogs.find(log => log.log_date === today);
-                if (!todayLog) {
-                  onLogHabit(habit.id, 1, habit.is_consumable ? habit.cost_per_unit : null);
+            
+            <div className="flex space-x-4">
+              <button
+                onClick={onClose}
+                className="px-6 py-3 text-sm font-medium text-gray-700 bg-gray-200 dark:bg-gray-600 dark:text-gray-300 rounded-lg hover:bg-gray-300 dark:hover:bg-gray-500 transition-colors"
+              >
+                Close
+              </button>
+              <button
+                onClick={() => {
+                  const today = new Date().toISOString().split('T')[0];
+                  const todayLog = habitLogs.find(log => log.log_date === today);
+                  if (todayLog) {
+                    // If already logged, remove the log (toggle off)
+                    onDeleteLog(habit.id, today);
+                  } else {
+                    // If not logged, add the log (toggle on)
+                    onLogHabit(habit.id, 1, habit.is_consumable ? habit.cost_per_unit : null, 'completed');
+                  }
+                }}
+                className={`px-6 py-3 text-sm font-medium rounded-lg transition-colors ${
+                  habitLogs.some(log => log.log_date === new Date().toISOString().split('T')[0])
+                    ? 'text-green-700 bg-green-50 dark:bg-green-900/20 dark:text-green-300 border border-green-200 dark:border-green-800 hover:bg-green-100 dark:hover:bg-green-900/40'
+                    : 'text-white bg-indigo-600 hover:bg-indigo-700'
+                }`}
+              >
+                {habitLogs.some(log => log.log_date === new Date().toISOString().split('T')[0]) 
+                  ? 'Already Logged Today' 
+                  : 'Log for Today'
                 }
-              }}
-              disabled={habitLogs.some(log => log.log_date === new Date().toISOString().split('T')[0])}
-              className="px-6 py-3 text-sm font-medium text-white bg-indigo-600 rounded-lg hover:bg-indigo-700 disabled:bg-gray-400 disabled:cursor-not-allowed transition-colors"
-            >
-              {habitLogs.some(log => log.log_date === new Date().toISOString().split('T')[0]) 
-                ? 'Already Logged Today' 
-                : 'Log for Today'
-              }
-            </button>
+              </button>
+            </div>
           </div>
         </div>
       </div>

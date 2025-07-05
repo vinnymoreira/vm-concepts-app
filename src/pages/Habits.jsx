@@ -75,6 +75,7 @@ function Habits() {
         .from('habits')
         .select('*')
         .eq('user_id', user.id)  // ✅ Filter by user
+        .order('position', { ascending: true, nullsFirst: false })
         .order('created_at', { ascending: false });
       
       if (error) throw error;
@@ -125,14 +126,21 @@ function Habits() {
     }
 
     try {
+      // Get the current max position and add 1
+      const maxPosition = habits.length > 0 ? Math.max(...habits.map(h => h.position || 0)) : -1;
+      
       const { data, error } = await supabase
         .from('habits')
-        .insert([{ ...habitData, user_id: user.id }])  // ✅ Add user_id
+        .insert([{ 
+          ...habitData, 
+          user_id: user.id,
+          position: maxPosition + 1
+        }])  // ✅ Add user_id and position
         .select();
 
       if (error) throw error;
 
-      setHabits(prev => [data[0], ...prev]);
+      setHabits(prev => [...prev, data[0]]);
       setIsAddModalOpen(false);
     } catch (err) {
       console.error('Error adding habit:', err);
@@ -188,7 +196,7 @@ function Habits() {
     }
   };
 
-  const handleLogHabit = async (habitId, logData) => {
+  const handleLogHabit = async (habitId, quantity = 1, cost = null, logType = 'completed') => {
     if (!user) {
       setError('You must be logged in to log habits');
       return;
@@ -197,14 +205,18 @@ function Habits() {
     try {
       const today = new Date().toISOString().split('T')[0];
       
+      const logData = {
+        habit_id: habitId,
+        user_id: user.id,
+        log_date: today,
+        quantity: quantity,
+        cost: cost,
+        notes: logType
+      };
+      
       const { data, error } = await supabase
         .from('habit_logs')
-        .insert([{
-          habit_id: habitId,
-          user_id: user.id,  // ✅ Add user_id
-          log_date: today,
-          ...logData
-        }])
+        .insert([logData])
         .select();
 
       if (error) throw error;
@@ -216,6 +228,69 @@ function Habits() {
     } catch (err) {
       console.error('Error logging habit:', err);
       setError(err.message);
+    }
+  };
+
+  const handleDeleteLog = async (habitId, logDate = null) => {
+    if (!user) {
+      setError('You must be logged in to delete logs');
+      return;
+    }
+
+    try {
+      const dateToDelete = logDate || new Date().toISOString().split('T')[0];
+      
+      const { error } = await supabase
+        .from('habit_logs')
+        .delete()
+        .eq('habit_id', habitId)
+        .eq('user_id', user.id)
+        .eq('log_date', dateToDelete);
+
+      if (error) throw error;
+
+      // Remove from local state
+      setHabitLogs(prev => prev.filter(log => 
+        !(log.habit_id === habitId && log.log_date === dateToDelete)
+      ));
+      
+      // Refresh habits to update streak counts
+      fetchHabits();
+    } catch (err) {
+      console.error('Error deleting log:', err);
+      setError(err.message);
+    }
+  };
+
+  const handleReorderHabits = async (reorderedHabits) => {
+    if (!user) {
+      setError('You must be logged in to reorder habits');
+      return;
+    }
+
+    try {
+      // Update local state immediately for responsive UI
+      setHabits(reorderedHabits);
+
+      // Update position in database
+      const updates = reorderedHabits.map((habit, index) => ({
+        id: habit.id,
+        position: index
+      }));
+
+      // Update all positions in a batch
+      for (const update of updates) {
+        await supabase
+          .from('habits')
+          .update({ position: update.position })
+          .eq('id', update.id)
+          .eq('user_id', user.id);
+      }
+    } catch (err) {
+      console.error('Error reordering habits:', err);
+      setError(err.message);
+      // Revert to original order on error
+      fetchHabits();
     }
   };
 
@@ -324,17 +399,26 @@ function Habits() {
   // Calculate financial stats
   const totalSpentToday = todaysLogs.reduce((sum, log) => {
     const habit = habits.find(h => h.id === log.habit_id);
-    if (habit?.category === 'healthy' && habit?.cost_per_unit) {
-      return sum + (parseFloat(habit.cost_per_unit) * (log.quantity || 1));
+    if (habit?.cost_per_unit) {
+      const cost = log.cost || (parseFloat(habit.cost_per_unit) * (log.quantity || 1));
+      
+      if (habit.category === 'healthy') {
+        // For healthy habits, spending is always counted as spent
+        return sum + cost;
+      } else if (habit.category === 'unhealthy' && log.notes === 'slipped') {
+        // For unhealthy habits, only count as spent if they slipped
+        return sum + cost;
+      }
     }
     return sum;
   }, 0);
   
   const totalSavedToday = todaysLogs.reduce((sum, log) => {
     const habit = habits.find(h => h.id === log.habit_id);
-    if (habit?.category === 'unhealthy' && habit?.cost_per_unit) {
-      // For unhealthy habits, we "save" money when we avoid them
-      return sum + (parseFloat(habit.cost_per_unit) * (log.quantity || 1));
+    if (habit?.category === 'unhealthy' && habit?.cost_per_unit && log.notes === 'success') {
+      // For unhealthy habits, only count as saved if they successfully avoided
+      const cost = log.cost || (parseFloat(habit.cost_per_unit) * (log.quantity || 1));
+      return sum + cost;
     }
     return sum;
   }, 0);
@@ -348,53 +432,60 @@ function Habits() {
 
         <main className="flex-1 overflow-y-auto">
           <div className="px-4 sm:px-6 lg:px-8 py-8">
-            <div className="mb-8 flex justify-between items-center">
-              <h1 className="text-2xl md:text-3xl text-gray-800 dark:text-gray-100 font-bold">
-                Habits
-              </h1>
-              <button
-                onClick={() => setIsAddModalOpen(true)}
-                className="btn bg-indigo-500 hover:bg-indigo-600 text-white"
-              >
-                <Plus className="w-4 h-4 mr-2" />
-                <span>Add Habit</span>
-              </button>
-            </div>
+            <div className="mb-8">
+              <div className="sm:flex sm:justify-between sm:items-center mb-6">
+                <div className="mb-4 sm:mb-0">
+                  <h1 className="text-2xl md:text-3xl text-gray-800 dark:text-gray-100 font-bold">My Habits</h1>
+                  <p className="text-gray-600 dark:text-gray-400 mt-1">
+                    {filteredHabits.length} of {habits.length} {habits.length === 1 ? 'habit' : 'habits'}
+                  </p>
+                </div>
+                <button
+                  onClick={() => setIsAddModalOpen(true)}
+                  className="btn bg-indigo-500 hover:bg-indigo-600 text-white shadow-lg hover:shadow-xl transition-all duration-200 transform hover:scale-105"
+                >
+                  <Plus className="w-4 h-4 mr-2" />
+                  <span>Add Habit</span>
+                </button>
+              </div>
 
-            {/* View Mode Filter */}
-            <div className="mb-6 flex space-x-2">
-              <button
-                onClick={() => setViewMode('all')}
-                className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
-                  viewMode === 'all'
-                    ? 'bg-indigo-500 text-white'
-                    : 'bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-300 dark:hover:bg-gray-600'
-                }`}
-              >
-                All Habits
-              </button>
-              <button
-                onClick={() => setViewMode('healthy')}
-                className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors flex items-center ${
-                  viewMode === 'healthy'
-                    ? 'bg-green-500 text-white'
-                    : 'bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-300 dark:hover:bg-gray-600'
-                }`}
-              >
-                <TrendingUp className="w-4 h-4 mr-1" />
-                Healthy
-              </button>
-              <button
-                onClick={() => setViewMode('unhealthy')}
-                className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors flex items-center ${
-                  viewMode === 'unhealthy'
-                    ? 'bg-red-500 text-white'
-                    : 'bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-300 dark:hover:bg-gray-600'
-                }`}
-              >
-                <TrendingDown className="w-4 h-4 mr-1" />
-                Unhealthy
-              </button>
+              {/* View Mode Filter */}
+              <div className="flex justify-end mb-6">
+                <div className="inline-flex rounded-xl bg-gray-100 dark:bg-gray-800 p-1">
+                  <button
+                    onClick={() => setViewMode('all')}
+                    className={`px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200 ${
+                      viewMode === 'all'
+                        ? 'bg-white dark:bg-gray-700 text-gray-900 dark:text-white shadow-sm'
+                        : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white'
+                    }`}
+                  >
+                    All Habits
+                  </button>
+                  <button
+                    onClick={() => setViewMode('healthy')}
+                    className={`px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200 flex items-center ${
+                      viewMode === 'healthy'
+                        ? 'bg-white dark:bg-gray-700 text-gray-900 dark:text-white shadow-sm'
+                        : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white'
+                    }`}
+                  >
+                    <TrendingUp className="w-4 h-4 mr-1" />
+                    Healthy Habits
+                  </button>
+                  <button
+                    onClick={() => setViewMode('unhealthy')}
+                    className={`px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200 flex items-center ${
+                      viewMode === 'unhealthy'
+                        ? 'bg-white dark:bg-gray-700 text-gray-900 dark:text-white shadow-sm'
+                        : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white'
+                    }`}
+                  >
+                    <TrendingDown className="w-4 h-4 mr-1" />
+                    Vices to Avoid
+                  </button>
+                </div>
+              </div>
             </div>
 
             <div className="space-y-6">
@@ -413,8 +504,10 @@ function Habits() {
                 habitLogs={habitLogs}
                 onHabitClick={setSelectedHabit}
                 onLogHabit={handleLogHabit}
+                onDeleteLog={handleDeleteLog}
                 onUpdateHabit={handleUpdateHabit}
                 onDeleteHabit={handleDeleteHabit}
+                onReorderHabits={handleReorderHabits}
               />
             </div>
           </div>
@@ -436,6 +529,7 @@ function Habits() {
           onClose={() => setSelectedHabit(null)}
           onUpdateHabit={handleUpdateHabit}
           onDeleteHabit={handleDeleteHabit}
+          onDeleteLog={handleDeleteLog}
           onLogHabit={handleLogHabit}
         />
       )}

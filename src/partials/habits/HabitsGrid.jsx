@@ -1,7 +1,33 @@
 import React from 'react';
+import {
+  DndContext,
+  closestCenter,
+  KeyboardSensor,
+  PointerSensor,
+  useSensor,
+  useSensors,
+} from '@dnd-kit/core';
+import {
+  arrayMove,
+  SortableContext,
+  sortableKeyboardCoordinates,
+  verticalListSortingStrategy,
+  rectSortingStrategy,
+} from '@dnd-kit/sortable';
+import {
+  restrictToWindowEdges,
+} from '@dnd-kit/modifiers';
 import HabitCard from './HabitCard';
+import SortableHabitCard from './SortableHabitCard';
 
-const HabitsGrid = ({ habits, habitLogs = [], onLogHabit, onHabitClick }) => {
+const HabitsGrid = ({ habits, habitLogs = [], onLogHabit, onDeleteLog, onHabitClick, onReorderHabits }) => {
+  const sensors = useSensors(
+    useSensor(PointerSensor),
+    useSensor(KeyboardSensor, {
+      coordinateGetter: sortableKeyboardCoordinates,
+    })
+  );
+
   if (habits.length === 0) {
     return (
       <div className="text-center py-12">
@@ -20,18 +46,44 @@ const HabitsGrid = ({ habits, habitLogs = [], onLogHabit, onHabitClick }) => {
     );
   }
 
+  const handleDragEnd = (event) => {
+    const { active, over } = event;
+
+    if (active.id !== over?.id) {
+      const oldIndex = habits.findIndex(habit => habit.id === active.id);
+      const newIndex = habits.findIndex(habit => habit.id === over.id);
+      
+      const reorderedHabits = arrayMove(habits, oldIndex, newIndex);
+      
+      // Call the parent's reorder function
+      if (onReorderHabits) {
+        onReorderHabits(reorderedHabits);
+      }
+    }
+  };
+
   return (
-    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-      {habits.map((habit) => (
-        <HabitCard
-          key={habit.id}
-          habit={habit}
-          habitLogs={habitLogs.filter(log => log.habit_id === habit.id)}
-          onLogHabit={onLogHabit}
-          onHabitClick={onHabitClick}
-        />
-      ))}
-    </div>
+    <DndContext
+      sensors={sensors}
+      collisionDetection={closestCenter}
+      onDragEnd={handleDragEnd}
+      modifiers={[restrictToWindowEdges]}
+    >
+      <SortableContext items={habits.map(habit => habit.id)} strategy={rectSortingStrategy}>
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+          {habits.map((habit) => (
+            <SortableHabitCard
+              key={habit.id}
+              habit={habit}
+              habitLogs={habitLogs.filter(log => log.habit_id === habit.id)}
+              onLogHabit={onLogHabit}
+              onDeleteLog={onDeleteLog}
+              onHabitClick={onHabitClick}
+            />
+          ))}
+        </div>
+      </SortableContext>
+    </DndContext>
   );
 };
 
