@@ -7,6 +7,7 @@ import { useAuth } from '../context/AuthContext';
 import Sidebar from '../partials/Sidebar';
 import Header from '../partials/Header';
 import AddClientModal from '../partials/clients/AddClientModal';
+import LogoUploader from '../components/LogoUploader';
 
 const ClientCard = ({ client }) => {
   const isActive = client.status === 'active';
@@ -16,9 +17,12 @@ const ClientCard = ({ client }) => {
       <Link to={`/clients/${client.id}`} className="block">
         <div className="flex items-start gap-4">
           <div className="relative">
-            <div className="w-12 h-12 rounded-lg bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center text-white font-bold text-lg shadow-md">
-              {client.company ? client.company.charAt(0).toUpperCase() : 'C'}
-            </div>
+            <LogoUploader
+              currentImageUrl={client.logo_url}
+              companyName={client.company || 'C'}
+              size="w-12 h-12"
+              isEditable={false}
+            />
             <div className={`absolute -bottom-1 -right-1 w-4 h-4 rounded-full border-2 border-white dark:border-gray-800 ${
               isActive ? 'bg-green-500' : 'bg-gray-400'
             }`}></div>
@@ -114,6 +118,7 @@ function Clients() {
         phone: newClient.phone,
         company: newClient.company,
         website: newClient.website,
+        logo_url: newClient.logo_url,
         status: newClient.status,
         additional_info: newClient.additionalInfo,
         user_id: user.id
@@ -255,19 +260,6 @@ function Clients() {
               <div className="sm:flex sm:justify-between sm:items-center mb-6">
                 <div className="mb-4 sm:mb-0">
                   <h1 className="text-2xl md:text-3xl text-gray-800 dark:text-gray-100 font-bold">My Clients</h1>
-                  <p className="text-gray-600 dark:text-gray-400 mt-1">
-                    {filteredClients.length} of {clients.length} {clients.length === 1 ? 'client' : 'clients'}
-                    {(searchTerm || statusFilter !== 'all') && (
-                      <span className="ml-2">
-                        <button
-                          onClick={clearFilters}
-                          className="text-indigo-600 hover:text-indigo-800 dark:text-indigo-400 dark:hover:text-indigo-300 text-sm underline"
-                        >
-                          Clear filters
-                        </button>
-                      </span>
-                    )}
-                  </p>
                 </div>
                 <button
                   onClick={() => setIsAddModalOpen(true)}
@@ -279,36 +271,43 @@ function Clients() {
               </div>
 
               {/* Search and Filter Bar */}
-              <div className="flex justify-end gap-4 mb-6">
-                <div className="relative w-80">
-                  <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
-                  <input
-                    type="text"
-                    placeholder="Search clients..."
-                    value={searchTerm}
-                    onChange={(e) => setSearchTerm(e.target.value)}
-                    className="w-full pl-10 pr-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 dark:bg-gray-700 dark:text-white"
-                  />
-                  {searchTerm && (
-                    <button
-                      onClick={() => setSearchTerm('')}
-                      className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
-                    >
-                      <X className="w-4 h-4" />
-                    </button>
-                  )}
-                </div>
-                <div className="relative">
-                  <Filter className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
-                  <select
-                    value={statusFilter}
-                    onChange={(e) => setStatusFilter(e.target.value)}
-                    className="pl-10 pr-8 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 dark:bg-gray-700 dark:text-white appearance-none bg-white dark:bg-gray-700"
-                  >
-                    <option value="all">All Status</option>
-                    <option value="active">Active</option>
-                    <option value="inactive">Inactive</option>
-                  </select>
+              <div className="flex justify-end mb-6">
+                <div className="text-right">
+                  <div className="flex gap-4 mb-2">
+                    <div className="relative w-80">
+                      <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
+                      <input
+                        type="text"
+                        placeholder="Search clients..."
+                        value={searchTerm}
+                        onChange={(e) => setSearchTerm(e.target.value)}
+                        className="w-full pl-10 pr-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 dark:bg-gray-700 dark:text-white"
+                      />
+                      {searchTerm && (
+                        <button
+                          onClick={() => setSearchTerm('')}
+                          className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
+                        >
+                          <X className="w-4 h-4" />
+                        </button>
+                      )}
+                    </div>
+                    <div className="relative">
+                      <Filter className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
+                      <select
+                        value={statusFilter}
+                        onChange={(e) => setStatusFilter(e.target.value)}
+                        className="pl-10 pr-8 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 dark:bg-gray-700 dark:text-white appearance-none bg-white dark:bg-gray-700"
+                      >
+                        <option value="all">All Status</option>
+                        <option value="active">Active</option>
+                        <option value="inactive">Inactive</option>
+                      </select>
+                    </div>
+                  </div>
+                  <p className="text-gray-600 dark:text-gray-400 text-sm">
+                    Showing {filteredClients.length} of {clients.length} {clients.length === 1 ? 'client' : 'clients'}
+                  </p>
                 </div>
               </div>
             </div>
@@ -352,7 +351,7 @@ function Clients() {
                 </button>
               </div>
             ) : (
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-6">
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
                 {filteredClients.map((client) => (
                   <ClientCard
                     key={client.id}

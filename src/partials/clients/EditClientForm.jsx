@@ -1,6 +1,7 @@
 import React from 'react';
 import { Mail, Phone, Briefcase, Globe, LinkIcon, User, Key, Plus, X } from 'lucide-react';
 import ToggleSwitch from '../../components/ToggleSwitch';
+import LogoUploader from '../../components/LogoUploader';
 
 function EditClientForm({ client, handleInputChange, handleStatusChange }) {
     const renderField = (icon, value, type = "text", fieldName = '', placeholder = '') => (
@@ -85,15 +86,24 @@ function EditClientForm({ client, handleInputChange, handleStatusChange }) {
         <div className="space-y-8">
             {/* Client Header */}
             <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 p-6 bg-gradient-to-r from-indigo-50 to-purple-50 dark:from-indigo-900 dark:to-purple-900 rounded-xl border border-indigo-200 dark:border-indigo-700">
-                <div className="flex-grow">
-                    <input
-                        type="text"
-                        value={client.name || ''}
-                        onChange={(e) => handleInputChange(e, 'name')}
-                        placeholder="Contact Person Name"
-                        className="text-3xl font-bold w-full bg-transparent border-none focus:outline-none text-indigo-900 dark:text-indigo-100 placeholder-indigo-400 dark:placeholder-indigo-500"
+                <div className="flex items-center gap-4 flex-grow">
+                    <LogoUploader
+                        currentImageUrl={client.logo_url}
+                        companyName={client.company || 'C'}
+                        size="w-16 h-16"
+                        isEditable={true}
+                        onImageUpload={(url) => handleInputChange({ target: { value: url } }, 'logo_url')}
+                        onImageRemove={() => handleInputChange({ target: { value: null } }, 'logo_url')}
                     />
-                    <p className="text-indigo-600 dark:text-indigo-300 mt-1">Contact Person</p>
+                    <div className="flex-grow">
+                        <input
+                            type="text"
+                            value={client.company || ''}
+                            onChange={(e) => handleInputChange(e, 'company')}
+                            placeholder="Company Name"
+                            className="text-3xl font-bold w-full bg-transparent border-none focus:outline-none text-indigo-900 dark:text-indigo-100 placeholder-indigo-400 dark:placeholder-indigo-500"
+                        />
+                    </div>
                 </div>
                 <div className="flex items-center gap-3">
                     <ToggleSwitch
@@ -118,6 +128,19 @@ function EditClientForm({ client, handleInputChange, handleStatusChange }) {
                     Contact Information
                 </h2>
                 <div className="p-6 bg-gradient-to-br from-gray-50 to-gray-100 dark:from-gray-700 dark:to-gray-800 rounded-xl border border-gray-200 dark:border-gray-600">
+                    <div className="mb-4 space-y-2">
+                        <label className="text-sm font-semibold text-gray-700 dark:text-gray-300 flex items-center">
+                            <User className="w-4 h-4 mr-2 text-indigo-500" />
+                            Contact Person Name
+                        </label>
+                        <input
+                            type="text"
+                            value={client.name || ''}
+                            onChange={(e) => handleInputChange(e, 'name')}
+                            placeholder="Enter contact person name"
+                            className="w-full bg-white dark:bg-gray-600 border border-gray-300 dark:border-gray-500 rounded-lg px-4 py-3 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-all"
+                        />
+                    </div>
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                         <div className="space-y-2">
                             <label className="text-sm font-semibold text-gray-700 dark:text-gray-300 flex items-center">
@@ -132,13 +155,6 @@ function EditClientForm({ client, handleInputChange, handleStatusChange }) {
                                 Phone
                             </label>
                             {renderField(null, client.phone, "tel", "phone", "Enter phone number")}
-                        </div>
-                        <div className="space-y-2">
-                            <label className="text-sm font-semibold text-gray-700 dark:text-gray-300 flex items-center">
-                                <Briefcase className="w-4 h-4 mr-2 text-indigo-500" />
-                                Company
-                            </label>
-                            {renderField(null, client.company, "text", "company", "Enter company name")}
                         </div>
                         <div className="space-y-2">
                             <label className="text-sm font-semibold text-gray-700 dark:text-gray-300 flex items-center">

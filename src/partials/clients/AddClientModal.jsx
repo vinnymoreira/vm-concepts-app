@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { X, Plus } from 'lucide-react';
+import ImageUpload from '../../components/ImageUpload';
 
 const initialClientState = {
   name: '',
@@ -7,6 +8,7 @@ const initialClientState = {
   phone: '',
   company: '',
   website: '',
+  logo_url: null,
   status: 'active', // Ensure this is set to 'active' by default
   additionalInfo: []
 };
@@ -82,6 +84,15 @@ function AddClientModal({ isOpen, onClose, onAddClient }) {
           </button>
         </div>
         <form onSubmit={handleSubmit}>
+          {/* Company Logo Upload */}
+          <div className="mb-6">
+            <ImageUpload
+              currentImageUrl={newClient.logo_url}
+              onImageUpload={(url) => setNewClient(prev => ({ ...prev, logo_url: url }))}
+              onImageRemove={() => setNewClient(prev => ({ ...prev, logo_url: null }))}
+            />
+          </div>
+
           {['name', 'email', 'phone', 'company', 'website', 'status'].map((field) => (
             <div key={field} className="mb-4">
               <label htmlFor={field} className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">

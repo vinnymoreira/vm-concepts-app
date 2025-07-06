@@ -98,6 +98,7 @@ function ClientDetail() {
         company: client.company,
         website: client.website,
         status: client.status,
+        logo_url: client.logo_url || null,
         github_repo: client.github_repo || null,
         web_host: web_host_array,
         registrar: registrar_array,
@@ -211,9 +212,32 @@ function ClientDetail() {
     }));
   };
 
-  const handleStatusChange = (isActive) => {
+  const handleStatusChange = async (isActive) => {
     const newStatus = isActive ? 'active' : 'inactive';
     setClient(prev => ({ ...prev, status: newStatus }));
+    
+    // If not in editing mode, save immediately to database
+    if (!isEditing) {
+      try {
+        const { error } = await supabase
+          .from('clients')
+          .update({ status: newStatus })
+          .eq('id', id)
+          .eq('user_id', user.id);
+
+        if (error) {
+          console.error('Error updating client status:', error);
+          // Revert the local state change if database update fails
+          setClient(prev => ({ ...prev, status: prev.status === 'active' ? 'inactive' : 'active' }));
+          setError(`Error updating client status: ${error.message}`);
+        }
+      } catch (error) {
+        console.error('Error updating client status:', error);
+        // Revert the local state change if database update fails
+        setClient(prev => ({ ...prev, status: prev.status === 'active' ? 'inactive' : 'active' }));
+        setError(`Error updating client status: ${error.message}`);
+      }
+    }
   };
 
   const copyToClipboard = async (text, fieldName) => {
@@ -345,16 +369,7 @@ function ClientDetail() {
                   ← Back to Clients
                 </Link>
               </div>
-              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-                <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center text-white font-bold text-lg shadow-md">
-                    {client?.company ? client.company.charAt(0).toUpperCase() : 'C'}
-                  </div>
-                  <div>
-                    <h1 className="text-xl font-bold text-gray-900 dark:text-white">{client?.company || 'Unnamed Company'}</h1>
-                    <p className="text-sm text-gray-600 dark:text-gray-400">{client?.name || 'No contact name'}</p>
-                  </div>
-                </div>
+              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-end gap-4">
                 <div className="flex space-x-2">
                   {isEditing ? (
                     <>

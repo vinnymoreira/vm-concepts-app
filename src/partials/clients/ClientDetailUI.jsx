@@ -1,6 +1,7 @@
 import React from 'react';
 import { Mail, Phone, Briefcase, Globe, LinkIcon, User, Key, Copy, Check } from 'lucide-react';
 import ToggleSwitch from '../../components/ToggleSwitch';
+import LogoUploader from '../../components/LogoUploader';
 
 function ClientDetailUI({ client, handleStatusChange, copyToClipboard, copiedField }) {
     const renderField = (icon, value, type = "text", link = null, canCopy = false, fieldName = '') => (
@@ -74,9 +75,16 @@ function ClientDetailUI({ client, handleStatusChange, copyToClipboard, copiedFie
         <div className="space-y-8">
             {/* Client Header */}
             <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 p-6 bg-gradient-to-r from-indigo-50 to-purple-50 dark:from-indigo-900 dark:to-purple-900 rounded-xl border border-indigo-200 dark:border-indigo-700">
-                <div className="flex-grow">
-                    <h1 className="text-3xl font-bold text-indigo-900 dark:text-indigo-100 mb-2">{client.name || 'Unnamed Client'}</h1>
-                    <p className="text-indigo-600 dark:text-indigo-300">Contact Person</p>
+                <div className="flex items-center gap-4 flex-grow">
+                    <LogoUploader
+                        currentImageUrl={client.logo_url}
+                        companyName={client.company || 'C'}
+                        size="w-16 h-16"
+                        isEditable={false}
+                    />
+                    <div>
+                        <h1 className="text-3xl font-bold text-indigo-900 dark:text-indigo-100">{client.company || 'Unnamed Company'}</h1>
+                    </div>
                 </div>
                 <div className="flex items-center gap-3">
                     <ToggleSwitch
@@ -100,6 +108,7 @@ function ClientDetailUI({ client, handleStatusChange, copyToClipboard, copiedFie
                     <User className="w-6 h-6 mr-2 text-indigo-500" />
                     Contact Information
                 </h2>
+                <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-4">{client.name || 'Unnamed Client'}</h3>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     {renderField(<Mail className="w-5 h-5 text-indigo-500" />, client.email, "email", null, true, "email")}
                     {renderField(<Phone className="w-5 h-5 text-indigo-500" />, client.phone, "tel", `tel:${client.phone}`, false, "phone")}
