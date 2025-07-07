@@ -1,6 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext'; // ✅ Use useAuth instead of useContext
+import { supabase } from '../supabaseClient';
 import Transition from '../utils/Transition';
 
 import UserAvatar from '../images/user-avatar-32.png';
@@ -10,6 +11,9 @@ function DropdownProfile({
 }) {
 
   const [dropdownOpen, setDropdownOpen] = useState(false);
+  const [profileAvatar, setProfileAvatar] = useState(null);
+  const [avatarLoading, setAvatarLoading] = useState(true);
+  const [avatarError, setAvatarError] = useState(false);
   const navigate = useNavigate();
 
   const trigger = useRef(null);
@@ -38,6 +42,92 @@ function DropdownProfile({
 
   const { user, signOut } = useAuth(); // ✅ Use useAuth hook
 
+  // Load user profile avatar with caching
+  useEffect(() => {
+    const loadProfileAvatar = async () => {
+      if (!user) {
+        setAvatarLoading(false);
+        return;
+      }
+
+      // Check localStorage cache first
+      const cacheKey = `avatar_${user.id}`;
+      const cachedAvatar = localStorage.getItem(cacheKey);
+      
+      if (cachedAvatar && cachedAvatar !== 'null') {
+        setProfileAvatar(cachedAvatar);
+        setAvatarLoading(false);
+        
+        // Still fetch from database in background to ensure it's up to date
+        fetchAvatarFromDB(false);
+        return;
+      }
+
+      // If no cache, fetch from database
+      await fetchAvatarFromDB(true);
+    };
+
+    const fetchAvatarFromDB = async (setLoadingState = true) => {
+      try {
+        if (setLoadingState) setAvatarLoading(true);
+        
+        const { data: profileData } = await supabase
+          .from('profiles')
+          .select('avatar_url')
+          .eq('id', user.id)
+          .single();
+
+        let avatarUrl = null;
+        if (profileData?.avatar_url) {
+          avatarUrl = profileData.avatar_url;
+        } else {
+          // Fall back to Google avatar if available
+          avatarUrl = user.user_metadata?.avatar_url || null;
+        }
+
+        setProfileAvatar(avatarUrl);
+        
+        // Cache the result
+        const cacheKey = `avatar_${user.id}`;
+        if (avatarUrl) {
+          localStorage.setItem(cacheKey, avatarUrl);
+        } else {
+          localStorage.removeItem(cacheKey);
+        }
+        
+      } catch (error) {
+        console.error('Error loading avatar:', error);
+        // Fall back to Google avatar if profile doesn't exist
+        const fallbackAvatar = user.user_metadata?.avatar_url || null;
+        setProfileAvatar(fallbackAvatar);
+        
+        // Cache the fallback
+        const cacheKey = `avatar_${user.id}`;
+        if (fallbackAvatar) {
+          localStorage.setItem(cacheKey, fallbackAvatar);
+        }
+      } finally {
+        if (setLoadingState) setAvatarLoading(false);
+      }
+    };
+
+    loadProfileAvatar();
+
+    // Listen for profile updates
+    const handleProfileUpdate = () => {
+      // Clear cache on update
+      const cacheKey = `avatar_${user.id}`;
+      localStorage.removeItem(cacheKey);
+      fetchAvatarFromDB(false); // Don't show loading state for updates
+    };
+
+    window.addEventListener('profileUpdated', handleProfileUpdate);
+    
+    return () => {
+      window.removeEventListener('profileUpdated', handleProfileUpdate);
+    };
+  }, [user]);
+
   const handleSignOut = async () => {
     try {
       await signOut();
@@ -48,6 +138,32 @@ function DropdownProfile({
     }
   };
 
+  const getInitials = (name) => {
+    if (!name) return 'U';
+    const names = name.trim().split(' ');
+    if (names.length >= 2) {
+      return (names[0].charAt(0) + names[names.length - 1].charAt(0)).toUpperCase();
+    }
+    return name.charAt(0).toUpperCase();
+  };
+
+  // Preload avatar image to avoid flicker
+  useEffect(() => {
+    if (profileAvatar && !avatarError) {
+      const img = new Image();
+      img.onload = () => {
+        // Image is preloaded and ready
+      };
+      img.onerror = () => {
+        setAvatarError(true);
+        setProfileAvatar(null);
+      };
+      img.src = profileAvatar;
+    }
+  }, [profileAvatar]);
+
+  const userName = user?.user_metadata?.full_name || user?.email?.split('@')[0] || 'User';
+
   return (
     <div className="relative inline-flex">
       <button
@@ -57,7 +173,27 @@ function DropdownProfile({
         onClick={() => setDropdownOpen(!dropdownOpen)}
         aria-expanded={dropdownOpen}
       >
-        <img className="w-8 h-8 rounded-full" src={UserAvatar} width="32" height="32" alt="User" />
+        <div className="w-8 h-8 rounded-full overflow-hidden bg-gradient-to-br from-violet-500 to-purple-600 flex items-center justify-center relative">
+          {profileAvatar && !avatarError ? (
+            <img 
+              className="w-full h-full object-cover" 
+              src={profileAvatar} 
+              width="32" 
+              height="32" 
+              alt="User"
+              onLoad={() => setAvatarError(false)}
+              onError={() => {
+                setAvatarError(true);
+                setProfileAvatar(null);
+              }}
+              style={{ display: avatarError ? 'none' : 'block' }}
+            />
+          ) : (
+            <div className="w-full h-full flex items-center justify-center text-white font-medium text-sm">
+              {getInitials(userName)}
+            </div>
+          )}
+        </div>
         <div className="flex items-center truncate">
           <span className="truncate ml-2 text-sm font-medium text-gray-600 dark:text-gray-100 group-hover:text-gray-800 dark:group-hover:text-white">
             {user?.user_metadata?.full_name || user?.email?.split('@')[0] || 'User'} {/* ✅ Show full name, then email, then fallback */}
@@ -93,6 +229,15 @@ function DropdownProfile({
           {user ? (
             <div className="flex items-center space-x-3">
               <ul>
+                <li>
+                  <Link
+                    className="font-medium text-sm text-gray-600 dark:text-gray-300 hover:text-gray-800 dark:hover:text-gray-100 flex items-center py-1 px-3"
+                    to="/profile"
+                    onClick={() => setDropdownOpen(false)}
+                  >
+                    Edit Profile
+                  </Link>
+                </li>
                 <li>
                   <button
                     className="font-medium text-sm text-violet-500 hover:text-violet-600 dark:hover:text-violet-400 flex items-center py-1 px-3 w-full text-left"

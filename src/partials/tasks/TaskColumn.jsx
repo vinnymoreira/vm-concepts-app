@@ -36,7 +36,6 @@ const TaskColumn = ({ column, onTaskUpdate, onColumnDelete, onColumnUpdate, onTa
     };
 
     const handleTaskComplete = async (taskId, destColumnId, newPosition) => {
-        console.log('TaskColumn handling complete:', { taskId, destColumnId, newPosition });
         if (onTaskComplete) {
             onTaskComplete(taskId, column.id, destColumnId, newPosition);
         }

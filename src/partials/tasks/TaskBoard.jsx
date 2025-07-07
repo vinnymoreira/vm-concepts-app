@@ -206,7 +206,6 @@ const TaskBoard = () => {
     const fetchColumns = async () => {
         try {
             setLoading(true);
-            // console.log('Fetching columns for user:', user.id); // Debug log
             
             // First fetch columns
             const { data: columnsData, error: columnsError } = await supabase
@@ -232,7 +231,6 @@ const TaskBoard = () => {
                 throw tasksError;
             }
 
-            // console.log('Fetched data:', { columnsData, tasksData }); // Debug log
 
             const organizedColumns = columnsData.map(column => ({
                 ...column,
@@ -250,7 +248,6 @@ const TaskBoard = () => {
     };
 
     const handleTaskComplete = async (taskId, sourceColumnId, destColumnId, newPosition) => {
-        console.log('TaskBoard handling complete:', { taskId, sourceColumnId, destColumnId, newPosition });
         try {
             const sourceColumn = columns.find(col => col.id === sourceColumnId);
             const destColumn = columns.find(col => col.id === destColumnId);

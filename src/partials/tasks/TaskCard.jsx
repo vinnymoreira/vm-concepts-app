@@ -106,7 +106,6 @@ const TaskCard = ({ task, index, onUpdate, onDelete, onComplete, onKeyDown, isAd
     const handleCompleteClick = async (e) => {
         e.preventDefault();
         e.stopPropagation();
-        console.log('Complete button clicked for task:', task.id);
         
         try {
             // Get the "Done" column
@@ -116,7 +115,6 @@ const TaskCard = ({ task, index, onUpdate, onDelete, onComplete, onKeyDown, isAd
                 .eq('title', 'Done')
                 .single();
     
-            console.log('Found Done column:', doneColumn);
     
             if (columnError) {
                 console.error('Error finding Done column:', columnError);

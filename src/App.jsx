@@ -10,6 +10,7 @@ import ClientDetail from './partials/clients/ClientDetail';
 import Tasks from './pages/Tasks';
 import Fitness from './pages/Fitness';
 import Habits from './pages/Habits';
+import Profile from './pages/Profile';
 
 
 // Import auth components
@@ -58,6 +59,11 @@ function App() {
         <Route path="/habits" element={
           <ProtectedRoute>
             <Habits />
+          </ProtectedRoute>
+        } />
+        <Route path="/profile" element={
+          <ProtectedRoute>
+            <Profile />
           </ProtectedRoute>
         } />
         <Route path="*" element={<Navigate to="/" replace />} />

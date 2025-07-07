@@ -133,7 +133,6 @@ const DashboardCardWeather = () => {
       // Update local state immediately
       setUserPreferences(newPreferences);
       
-      console.log('Preferences saved:', newPreferences);
     } catch (err) {
       console.error('Error saving preferences:', err);
     }
@@ -165,7 +164,6 @@ const DashboardCardWeather = () => {
       setLoading(true);
       setError(null);
       
-      console.log('Fetching weather for:', searchCity, 'Unit:', userPreferences.temperature_unit);
       
       // First get coordinates for the city
       const geoResponse = await fetch(
@@ -191,8 +189,6 @@ const DashboardCardWeather = () => {
       if (!weatherResponse.ok) throw new Error('Weather data fetch failed');
       
       const data = await weatherResponse.json();
-      
-      console.log('Weather data received:', data);
       
       setWeather({
         city: `${name}, ${country}`,
@@ -232,7 +228,6 @@ const DashboardCardWeather = () => {
       default_city: cityString
     };
     
-    console.log('Saving new city:', cityString);
     await saveUserPreferences(newPreferences);
   };
 
@@ -250,7 +245,6 @@ const DashboardCardWeather = () => {
       temperature_unit: newUnit
     };
     
-    console.log('Toggling temperature unit to:', newUnit);
     await saveUserPreferences(newPreferences);
   };
 

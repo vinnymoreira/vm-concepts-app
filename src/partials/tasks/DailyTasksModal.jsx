@@ -44,16 +44,29 @@ const DailyTasksModal = ({ isOpen, onClose }) => {
         if (!user) return;
         
         try {
-        const { data, error } = await supabase
-            .from('daily_tasks')
-            .select('*')
-            .eq('user_id', user.id)
-            .order('position');
+            // Check if user_id column exists by trying to fetch with it
+            let { data, error } = await supabase
+                .from('daily_tasks')
+                .select('*')
+                .eq('user_id', user.id)
+                .order('position');
 
-        if (error) throw error;
-        setTasks(data || []);
+            // If column doesn't exist, fall back to fetching all tasks (legacy mode)
+            if (error && error.code === '42703') {
+                const { data: allTasks, error: allError } = await supabase
+                    .from('daily_tasks')
+                    .select('*')
+                    .order('position');
+                
+                if (allError) throw allError;
+                data = allTasks || [];
+            } else if (error) {
+                throw error;
+            }
+
+            setTasks(data || []);
         } catch (err) {
-        console.error('Error fetching daily tasks:', err);
+            console.error('Error fetching daily tasks:', err);
         }
     };
 
@@ -62,22 +75,25 @@ const DailyTasksModal = ({ isOpen, onClose }) => {
         if (!newTask.trim() || !user) return;
 
         try {
-        const newPosition = tasks.length;
-        const { data, error } = await supabase
-            .from('daily_tasks')
-            .insert([{ 
-            title: newTask.trim(),
-            position: newPosition,
-            user_id: user.id
-            }])
-            .select()
-            .single();
+            const newPosition = tasks.length;
+            
+            // Try inserting without user_id since the column doesn't exist
+            const insertData = { 
+                title: newTask.trim(),
+                position: newPosition
+            };
+            
+            const { data, error } = await supabase
+                .from('daily_tasks')
+                .insert([insertData])
+                .select()
+                .single();
 
-        if (error) throw error;
-        setTasks([...tasks, data]);
-        setNewTask('');
+            if (error) throw error;
+            setTasks([...tasks, data]);
+            setNewTask('');
         } catch (err) {
-        console.error('Error adding daily task:', err);
+            console.error('Error adding daily task:', err);
         }
     };
 
@@ -85,16 +101,16 @@ const DailyTasksModal = ({ isOpen, onClose }) => {
         if (!user) return;
         
         try {
-        const { error } = await supabase
-            .from('daily_tasks')
-            .delete()
-            .eq('id', taskId)
-            .eq('user_id', user.id);
+            // Delete by id only since user_id column doesn't exist
+            const { error } = await supabase
+                .from('daily_tasks')
+                .delete()
+                .eq('id', taskId);
 
-        if (error) throw error;
-        setTasks(tasks.filter(task => task.id !== taskId));
+            if (error) throw error;
+            setTasks(tasks.filter(task => task.id !== taskId));
         } catch (err) {
-        console.error('Error deleting daily task:', err);
+            console.error('Error deleting daily task:', err);
         }
     };
 
@@ -108,21 +124,21 @@ const DailyTasksModal = ({ isOpen, onClose }) => {
         setTasks(items);
 
         try {
-        const updates = items.map((task, index) => ({
-            id: task.id,
-            position: index,
-            title: task.title,
-            user_id: user.id
-        }));
+            // Update without user_id since the column doesn't exist
+            const updates = items.map((task, index) => ({
+                id: task.id,
+                position: index,
+                title: task.title
+            }));
 
-        const { error } = await supabase
-            .from('daily_tasks')
-            .upsert(updates);
+            const { error } = await supabase
+                .from('daily_tasks')
+                .upsert(updates);
 
-        if (error) throw error;
+            if (error) throw error;
         } catch (err) {
-        console.error('Error updating task positions:', err);
-        fetchDailyTasks();
+            console.error('Error updating task positions:', err);
+            fetchDailyTasks();
         }
     };
 

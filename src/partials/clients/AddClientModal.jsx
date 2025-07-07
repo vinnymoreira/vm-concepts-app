@@ -28,7 +28,6 @@ function AddClientModal({ isOpen, onClose, onAddClient }) {
   const [newClient, setNewClient] = useState(initialClientState);
 
   useEffect(() => {
-    // console.log("Initial newClient state:", newClient);
   }, []);
 
   const handleInputChange = (e) => {
@@ -36,7 +35,6 @@ function AddClientModal({ isOpen, onClose, onAddClient }) {
     const updatedValue = name === 'phone' ? formatPhoneNumber(value) : value;
     setNewClient(prev => {
       const updated = { ...prev, [name]: updatedValue };
-      console.log(`Field '${name}' updated. New state:`, updated);
       return updated;
     });
   };
@@ -66,7 +64,6 @@ function AddClientModal({ isOpen, onClose, onAddClient }) {
 
   const handleSubmit = (e) => {
     e.preventDefault();
-    // console.log("Submitting client data:", newClient);
     onAddClient(newClient);
     setNewClient(initialClientState);
     onClose();

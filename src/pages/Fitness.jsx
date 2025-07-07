@@ -136,7 +136,6 @@ function Fitness() {
           updated_at: new Date().toISOString()
         };
         
-        console.log('Updating goal with data:', updateData); // Debug log
         
         const { error } = await supabase
           .from('fitness_goals')
@@ -163,7 +162,6 @@ function Fitness() {
           
       } else {
         // Create new goal
-        console.log('Creating new goal with data:', dbGoalData); // Debug log
         
         const { data: newGoal, error } = await supabase
           .from('fitness_goals')
@@ -191,7 +189,6 @@ function Fitness() {
           target_weight: parseFloat(milestone.weight)
         }));
         
-        console.log('Saving milestones:', milestonesToSave); // Debug log
         
         const { error: milestonesError } = await supabase
           .from('fitness_milestones')
@@ -246,7 +243,6 @@ function Fitness() {
         console.error('Error refreshing data:', refreshError);
       }
       
-      console.log('Goal saved successfully!'); // Success log
       
     } catch (error) {
       console.error('Error saving goal:', error);
@@ -288,7 +284,6 @@ function Fitness() {
       setMilestones([]);
       setIsEditGoalModalOpen(false);
       
-      console.log('Goal deleted successfully!');
       
     } catch (error) {
       console.error('Error deleting goal:', error);

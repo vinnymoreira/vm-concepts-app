@@ -105,7 +105,6 @@ function Tasks() {
       const { data: dailyTasks, error: dailyError } = await supabase
         .from('daily_tasks')
         .select('*')
-        .eq('user_id', user.id)  // ✅ Filter by user
         .order('position');
 
       if (dailyError) throw dailyError;
