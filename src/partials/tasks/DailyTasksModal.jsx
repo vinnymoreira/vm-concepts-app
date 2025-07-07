@@ -2,15 +2,19 @@ import React, { useState, useEffect, useRef } from 'react';
 import { DragDropContext, Droppable, Draggable } from '@hello-pangea/dnd';
 import { Plus, X, GripVertical } from 'lucide-react';
 import { supabase } from '../../supabaseClient';
+import { useAuth } from '../../context/AuthContext';
 
 const DailyTasksModal = ({ isOpen, onClose }) => {
     const [tasks, setTasks] = useState([]);
     const [newTask, setNewTask] = useState('');
     const modalRef = useRef(null);
+    const { user } = useAuth();
 
     useEffect(() => {
-        fetchDailyTasks();
-    }, []);
+        if (user && isOpen) {
+            fetchDailyTasks();
+        }
+    }, [user, isOpen]);
 
     useEffect(() => {
         const handleEscape = (e) => {
@@ -37,10 +41,13 @@ const DailyTasksModal = ({ isOpen, onClose }) => {
     }, [isOpen, onClose]);
 
     const fetchDailyTasks = async () => {
+        if (!user) return;
+        
         try {
         const { data, error } = await supabase
             .from('daily_tasks')
             .select('*')
+            .eq('user_id', user.id)
             .order('position');
 
         if (error) throw error;
@@ -52,7 +59,7 @@ const DailyTasksModal = ({ isOpen, onClose }) => {
 
     const handleAddTask = async (e) => {
         e.preventDefault();
-        if (!newTask.trim()) return;
+        if (!newTask.trim() || !user) return;
 
         try {
         const newPosition = tasks.length;
@@ -60,7 +67,8 @@ const DailyTasksModal = ({ isOpen, onClose }) => {
             .from('daily_tasks')
             .insert([{ 
             title: newTask.trim(),
-            position: newPosition
+            position: newPosition,
+            user_id: user.id
             }])
             .select()
             .single();
@@ -74,11 +82,14 @@ const DailyTasksModal = ({ isOpen, onClose }) => {
     };
 
     const handleDeleteTask = async (taskId) => {
+        if (!user) return;
+        
         try {
         const { error } = await supabase
             .from('daily_tasks')
             .delete()
-            .eq('id', taskId);
+            .eq('id', taskId)
+            .eq('user_id', user.id);
 
         if (error) throw error;
         setTasks(tasks.filter(task => task.id !== taskId));
@@ -100,7 +111,8 @@ const DailyTasksModal = ({ isOpen, onClose }) => {
         const updates = items.map((task, index) => ({
             id: task.id,
             position: index,
-            title: task.title
+            title: task.title,
+            user_id: user.id
         }));
 
         const { error } = await supabase

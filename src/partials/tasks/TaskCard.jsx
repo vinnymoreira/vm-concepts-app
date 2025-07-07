@@ -241,7 +241,7 @@ const TaskCard = ({ task, index, onUpdate, onDelete, onComplete, onKeyDown, isAd
                     ref={provided.innerRef}
                     {...provided.draggableProps}
                     {...provided.dragHandleProps}
-                    className={`group bg-white dark:bg-gray-800 rounded-lg shadow-sm border-l-4 
+                    className={`group bg-white dark:bg-gray-800 rounded-lg shadow-sm  
                         ${getPriorityColor(task.priority)}
                         ${snapshot.isDragging 
                             ? 'shadow-xl scale-105 rotate-2 z-50' 
