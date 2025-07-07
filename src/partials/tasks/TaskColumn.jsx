@@ -3,13 +3,15 @@ import { Droppable } from '@hello-pangea/dnd';
 import { Plus, X, Trash2 } from 'lucide-react';
 import TaskCard from './TaskCard';
 import { supabase } from '../../supabaseClient';
+import { useAuth } from '../../context/AuthContext';
 
-const TaskColumn = ({ column, onTaskUpdate, onColumnDelete, onColumnUpdate, onTaskComplete, dragHandleProps }) => {
+const TaskColumn = ({ column, onTaskUpdate, onColumnDelete, onColumnUpdate, onTaskComplete, onTaskClick, selectedTaskIndex, isSelected, onStartInlineEdit, dragHandleProps }) => {
     const [isEditing, setIsEditing] = useState(column.title === '');
     const [title, setTitle] = useState(column.title);
     const [isAddingTasks, setIsAddingTasks] = useState(false);
     const titleInputRef = useRef(null);
     const isDoneColumn = column.title === 'Done';
+    const { user } = useAuth();
 
     useEffect(() => {
         if (isEditing && titleInputRef.current) {
@@ -96,7 +98,16 @@ const TaskColumn = ({ column, onTaskUpdate, onColumnDelete, onColumnUpdate, onTa
                     .insert([{
                         title: '',
                         column_id: column.id,
-                        position: column.tasks.length
+                        position: column.tasks.length,
+                        user_id: user.id,
+                        description: '',
+                        due_date: null,
+                        priority: 'none',
+                        labels: [],
+                        checklist: [],
+                        checklist_completed: 0,
+                        checklist_total: 0,
+                        comments_count: 0
                     }])
                     .select()
                     .single();
@@ -111,24 +122,42 @@ const TaskColumn = ({ column, onTaskUpdate, onColumnDelete, onColumnUpdate, onTa
     };
 
     const handleAddTask = async () => {
+        if (!user) {
+            console.error('User not authenticated');
+            return;
+        }
+
         try {
             const { data, error } = await supabase
                 .from('tasks')
                 .insert([{
                     title: '',
                     column_id: column.id,
-                    position: column.tasks.length
+                    position: column.tasks.length,
+                    user_id: user.id,
+                    description: '',
+                    due_date: null,
+                    priority: 'none',
+                    labels: [],
+                    checklist: [],
+                    checklist_completed: 0,
+                    checklist_total: 0,
+                    comments_count: 0
                 }])
                 .select()
                 .single();
 
-            if (error) throw error;
+            if (error) {
+                console.error('Database error:', error);
+                throw error;
+            }
             
             const updatedTasks = [...column.tasks, data];
             onTaskUpdate(column.id, updatedTasks);
             setIsAddingTasks(true);
         } catch (err) {
             console.error('Error adding task:', err);
+            alert('Failed to add task. Please try again.');
         }
     };
 
@@ -167,7 +196,9 @@ const TaskColumn = ({ column, onTaskUpdate, onColumnDelete, onColumnUpdate, onTa
     };
 
     return (
-        <div className="bg-gray-100 dark:bg-gray-700 rounded-lg">
+        <div className={`bg-gray-100 dark:bg-gray-700 rounded-lg ${
+            isSelected ? 'ring-2 ring-gray-300 dark:ring-gray-600' : ''
+        }`}>
             <div className="flex items-center justify-between p-4" {...dragHandleProps}>
                 <div className="flex-grow" onClick={() => setIsEditing(true)}>
                     {isEditing ? (
@@ -209,9 +240,11 @@ const TaskColumn = ({ column, onTaskUpdate, onColumnDelete, onColumnUpdate, onTa
                                 index={index}
                                 onUpdate={handleTaskUpdate}
                                 onDelete={handleDeleteTask}
-                                onComplete={handleTaskComplete} // Verify this prop
+                                onComplete={handleTaskComplete}
                                 onKeyDown={handleTaskKeyDown}
+                                onTaskClick={onTaskClick}
                                 isAddingTasks={isAddingTasks}
+                                isSelected={selectedTaskIndex === index}
                             />
                         ))}
                         {provided.placeholder}

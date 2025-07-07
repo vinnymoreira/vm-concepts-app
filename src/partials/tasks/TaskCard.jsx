@@ -1,9 +1,9 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { Draggable } from '@hello-pangea/dnd';
-import { X, Check } from 'lucide-react';
+import { X, Check, Calendar, Clock, Tag, MessageSquare, MoreHorizontal } from 'lucide-react';
 import { supabase } from '../../supabaseClient';
 
-const TaskCard = ({ task, index, onUpdate, onDelete, onComplete, onKeyDown, isAddingTasks }) => {
+const TaskCard = ({ task, index, onUpdate, onDelete, onComplete, onKeyDown, isAddingTasks, onTaskClick, isSelected }) => {
     const [isEditing, setIsEditing] = useState(task.title === '');
     const [title, setTitle] = useState(task.title);
     const inputRef = useRef(null);
@@ -15,6 +15,18 @@ const TaskCard = ({ task, index, onUpdate, onDelete, onComplete, onKeyDown, isAd
             inputRef.current.select();
         }
     }, [isEditing]);
+
+    // Listen for inline edit events from keyboard shortcuts
+    useEffect(() => {
+        const handleInlineEdit = (e) => {
+            if (e.detail && e.detail.taskId === task.id) {
+                setIsEditing(true);
+            }
+        };
+
+        document.addEventListener('startInlineEdit', handleInlineEdit);
+        return () => document.removeEventListener('startInlineEdit', handleInlineEdit);
+    }, [task.id]);
 
     // Update local state when task prop changes
     useEffect(() => {
@@ -77,6 +89,19 @@ const TaskCard = ({ task, index, onUpdate, onDelete, onComplete, onKeyDown, isAd
         }
         await handleSave(title);
     };
+
+    const handleClickOutside = (e) => {
+        if (isEditing && inputRef.current && !inputRef.current.contains(e.target)) {
+            handleSave(title);
+        }
+    };
+
+    useEffect(() => {
+        if (isEditing) {
+            document.addEventListener('click', handleClickOutside);
+            return () => document.removeEventListener('click', handleClickOutside);
+        }
+    }, [isEditing, title]);
 
     const handleCompleteClick = async (e) => {
         e.preventDefault();
@@ -143,6 +168,72 @@ const TaskCard = ({ task, index, onUpdate, onDelete, onComplete, onKeyDown, isAd
         onDelete(task.id);
     };
 
+    // Helper function to get priority color
+    const getPriorityColor = (priority) => {
+        switch (priority) {
+            case 'high': return 'border-l-red-500';
+            case 'medium': return 'border-l-yellow-500';
+            case 'low': return 'border-l-green-500';
+            default: return 'border-l-gray-300 dark:border-l-gray-600';
+        }
+    };
+
+    // Helper function to format due date
+    const formatDueDate = (dueDate) => {
+        if (!dueDate) return null;
+        const date = new Date(dueDate);
+        const today = new Date();
+        const diffTime = date - today;
+        const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+        
+        if (diffDays === 0) return 'Today';
+        if (diffDays === 1) return 'Tomorrow';
+        if (diffDays === -1) return 'Yesterday';
+        if (diffDays < 0) return `${Math.abs(diffDays)} days overdue`;
+        if (diffDays <= 7) return `${diffDays} days`;
+        
+        return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+    };
+
+    // Helper function to get due date color
+    const getDueDateColor = (dueDate) => {
+        if (!dueDate) return 'text-gray-500';
+        const date = new Date(dueDate);
+        const today = new Date();
+        const diffTime = date - today;
+        const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+        
+        if (diffDays < 0) return 'text-red-500'; // Overdue
+        if (diffDays === 0) return 'text-orange-500'; // Today
+        if (diffDays <= 3) return 'text-yellow-500'; // Soon
+        return 'text-gray-500'; // Normal
+    };
+
+    // Helper function to get label color (Trello-style)
+    const getLabelColor = (label, index) => {
+        const colors = [
+            'bg-green-500',    // Green
+            'bg-yellow-500',   // Yellow  
+            'bg-orange-500',   // Orange
+            'bg-red-500',      // Red
+            'bg-purple-500',   // Purple
+            'bg-blue-500',     // Blue
+            'bg-pink-500',     // Pink
+            'bg-indigo-500',   // Indigo
+            'bg-teal-500',     // Teal
+            'bg-gray-500'      // Gray
+        ];
+        
+        // Generate a consistent color based on label text
+        let hash = 0;
+        for (let i = 0; i < label.length; i++) {
+            hash = label.charCodeAt(i) + ((hash << 5) - hash);
+        }
+        
+        const colorIndex = Math.abs(hash) % colors.length;
+        return colors[colorIndex];
+    };
+
     return (
         <Draggable draggableId={task.id.toString()} index={index}>
             {(provided, snapshot) => (
@@ -150,42 +241,137 @@ const TaskCard = ({ task, index, onUpdate, onDelete, onComplete, onKeyDown, isAd
                     ref={provided.innerRef}
                     {...provided.draggableProps}
                     {...provided.dragHandleProps}
-                    className={`group bg-white dark:bg-gray-800 rounded-lg shadow p-3 
-                        ${snapshot.isDragging ? 'shadow-lg' : ''}`}
+                    className={`group bg-white dark:bg-gray-800 rounded-lg shadow-sm border-l-4 
+                        ${getPriorityColor(task.priority)}
+                        ${snapshot.isDragging 
+                            ? 'shadow-xl scale-105 rotate-2 z-50' 
+                            : 'hover:shadow-md'
+                        }
+                        ${isSelected ? 'ring-1 ring-gray-300 dark:ring-gray-600' : ''}
+                        ${snapshot.isDragging ? '' : 'transition-shadow duration-200 ease-in-out'}
+                        cursor-pointer`}
                 >
-                    <div className="flex items-center justify-between gap-2">
-                        {isEditing ? (
-                            <input
-                                ref={inputRef}
-                                type="text"
-                                value={title}
-                                onChange={(e) => setTitle(e.target.value)}
-                                onBlur={handleBlur}
-                                onKeyDown={handleKeyDown}
-                                className="flex-grow bg-transparent border-none rounded h-8 px-2 outline-none focus:bg-gray-50 dark:focus:bg-gray-700/50 transition-all duration-200"
-                                placeholder="Enter task title..."
-                            />
-                        ) : (
-                            <span 
-                                className="flex-grow text-gray-800 dark:text-gray-100 cursor-pointer"
-                                onClick={() => !snapshot.isDragging && setIsEditing(true)}
-                            >
-                                {title}
-                            </span>
+                    {/* Task Content */}
+                    <div className="px-3 py-2">
+                        {/* Main Task Title */}
+                        <div className="flex items-start justify-between gap-2">
+                            {isEditing ? (
+                                <input
+                                    ref={inputRef}
+                                    type="text"
+                                    value={title}
+                                    onChange={(e) => setTitle(e.target.value)}
+                                    onBlur={handleBlur}
+                                    onKeyDown={handleKeyDown}
+                                    className="flex-grow bg-transparent border-none rounded-md h-8 px-2 outline-none focus:bg-gray-50 dark:focus:bg-gray-700/50 transition-colors duration-200 font-medium text-gray-900 dark:text-gray-100"
+                                    placeholder="Enter task title..."
+                                />
+                            ) : (
+                                <h3 
+                                    className="flex-grow text-gray-900 dark:text-gray-100 font-medium leading-snug cursor-pointer"
+                                    onClick={(e) => {
+                                        if (snapshot.isDragging) return;
+                                        if (e.detail === 1) {
+                                            // Single click - open modal
+                                            onTaskClick?.(task);
+                                        } else if (e.detail === 2) {
+                                            // Double click - edit inline
+                                            setIsEditing(true);
+                                        }
+                                    }}
+                                >
+                                    {title}
+                                </h3>
+                            )}
+                            
+                            {/* Quick Actions */}
+                            <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity duration-200">
+                                <button
+                                    onClick={handleCompleteClick}
+                                    className="complete-button p-1.5 hover:bg-green-100 dark:hover:bg-green-900/30 rounded-md transition-colors duration-200"
+                                    title="Mark as complete"
+                                >
+                                    <Check className="w-3.5 h-3.5 text-green-600 dark:text-green-400" />
+                                </button>
+                                <button
+                                    onClick={handleDeleteClick}
+                                    className="delete-button p-1.5 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-md transition-colors duration-200"
+                                    title="Delete task"
+                                >
+                                    <X className="w-3.5 h-3.5 text-gray-500 dark:text-gray-400" />
+                                </button>
+                            </div>
+                        </div>
+
+                        {/* Task Description (if available) */}
+                        {task.description && (
+                            <p className="text-sm text-gray-600 dark:text-gray-400 mb-2 line-clamp-2">
+                                {task.description}
+                            </p>
                         )}
-                        <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                            <button
-                                onClick={handleCompleteClick}
-                                className="complete-button p-1 hover:bg-green-100 dark:hover:bg-green-900 rounded transition-colors"
-                            >
-                                <Check className="w-4 h-4 text-green-500" />
-                            </button>
-                            <button
-                                onClick={handleDeleteClick}
-                                className="delete-button p-1 hover:bg-gray-100 dark:hover:bg-gray-700 rounded transition-colors"
-                            >
-                                <X className="w-4 h-4 text-gray-500" />
-                            </button>
+
+                        {/* Task Metadata */}
+                        <div className="flex items-center justify-between">
+                            <div className="flex items-center gap-3">
+                                {/* Due Date */}
+                                {task.due_date && (
+                                    <div className={`flex items-center gap-1 text-xs ${getDueDateColor(task.due_date)}`}>
+                                        <Calendar className="w-3 h-3" />
+                                        <span className="font-medium">{formatDueDate(task.due_date)}</span>
+                                    </div>
+                                )}
+
+                                {/* Priority Badge */}
+                                {task.priority && task.priority !== 'none' && (
+                                    <div className={`flex items-center gap-1 text-xs px-2 py-1 rounded-full font-medium
+                                        ${task.priority === 'high' 
+                                            ? 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-300' 
+                                            : task.priority === 'medium'
+                                            ? 'bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-300'
+                                            : 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-300'
+                                        }`}>
+                                        <span>{task.priority}</span>
+                                    </div>
+                                )}
+
+                                {/* Labels/Tags */}
+                                {task.labels && task.labels.length > 0 && (
+                                    <div className="flex flex-wrap gap-1">
+                                        {task.labels.slice(0, 3).map((label, index) => (
+                                            <span
+                                                key={index}
+                                                className={`inline-block w-8 h-3 rounded-sm ${getLabelColor(label, index)}`}
+                                                title={label}
+                                            />
+                                        ))}
+                                        {task.labels.length > 3 && (
+                                            <span className="text-xs text-gray-500 dark:text-gray-400 self-center">
+                                                +{task.labels.length - 3}
+                                            </span>
+                                        )}
+                                    </div>
+                                )}
+                            </div>
+
+                            {/* Additional indicators */}
+                            <div className="flex items-center gap-2">
+                                {/* Comments indicator */}
+                                {task.comments_count > 0 && (
+                                    <div className="flex items-center gap-1 text-gray-400">
+                                        <MessageSquare className="w-3 h-3" />
+                                        <span className="text-xs">{task.comments_count}</span>
+                                    </div>
+                                )}
+
+                                {/* Checklist progress */}
+                                {task.checklist_total > 0 && (
+                                    <div className="flex items-center gap-1 text-gray-400">
+                                        <div className="text-xs font-medium">
+                                            {task.checklist_completed}/{task.checklist_total}
+                                        </div>
+                                    </div>
+                                )}
+                            </div>
                         </div>
                     </div>
                 </div>
