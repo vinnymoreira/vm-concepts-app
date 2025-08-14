@@ -196,19 +196,19 @@ function Habits() {
     }
   };
 
-  const handleLogHabit = async (habitId, quantity = 1, cost = null, logType = 'completed') => {
+  const handleLogHabit = async (habitId, quantity = 1, cost = null, logType = 'completed', customDate = null) => {
     if (!user) {
       setError('You must be logged in to log habits');
       return;
     }
 
     try {
-      const today = new Date().toISOString().split('T')[0];
+      const logDate = customDate || new Date().toISOString().split('T')[0];
       
       const logData = {
         habit_id: habitId,
         user_id: user.id,
-        log_date: today,
+        log_date: logDate,
         quantity: quantity,
         cost: cost,
         notes: logType
@@ -227,6 +227,44 @@ function Habits() {
       fetchHabits();
     } catch (err) {
       console.error('Error logging habit:', err);
+      setError(err.message);
+    }
+  };
+
+  const handleUpdateLog = async (habitId, logDate, quantity, cost, logType) => {
+    if (!user) {
+      setError('You must be logged in to update logs');
+      return;
+    }
+
+    try {
+      const updateData = {
+        quantity: quantity,
+        cost: cost,
+        notes: logType
+      };
+
+      const { data, error } = await supabase
+        .from('habit_logs')
+        .update(updateData)
+        .eq('habit_id', habitId)
+        .eq('user_id', user.id)
+        .eq('log_date', logDate)
+        .select();
+
+      if (error) throw error;
+
+      // Update local state
+      setHabitLogs(prev => prev.map(log => 
+        (log.habit_id === habitId && log.log_date === logDate) 
+          ? { ...log, ...updateData }
+          : log
+      ));
+      
+      // Refresh habits to update streak counts
+      fetchHabits();
+    } catch (err) {
+      console.error('Error updating log:', err);
       setError(err.message);
     }
   };
@@ -530,6 +568,7 @@ function Habits() {
           onUpdateHabit={handleUpdateHabit}
           onDeleteHabit={handleDeleteHabit}
           onDeleteLog={handleDeleteLog}
+          onUpdateLog={handleUpdateLog}
           onLogHabit={handleLogHabit}
         />
       )}

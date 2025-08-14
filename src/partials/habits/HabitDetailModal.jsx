@@ -1,9 +1,47 @@
-import React, { useState } from 'react';
-import { X, Calendar, TrendingUp, TrendingDown, DollarSign, Target, Edit3, Save, RotateCcw, Trash2 } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { X, Calendar, TrendingUp, TrendingDown, DollarSign, Target, Edit3, Save, RotateCcw, Trash2, Plus, Minus, Pencil, Trash } from 'lucide-react';
 
-const HabitDetailModal = ({ habit, habitLogs = [], onClose, onLogHabit, onDeleteLog, onUpdateHabit, onDeleteHabit }) => {
+const HabitDetailModal = ({ habit, habitLogs = [], onClose, onLogHabit, onDeleteLog, onUpdateLog, onUpdateHabit, onDeleteHabit }) => {
   const [selectedPeriod, setSelectedPeriod] = useState('week'); // 'week', 'month', 'year'
   const [isEditing, setIsEditing] = useState(false);
+  const [isAddingLog, setIsAddingLog] = useState(false);
+  const [selectedDate, setSelectedDate] = useState(() => {
+    const today = new Date();
+    const year = today.getFullYear();
+    const month = String(today.getMonth() + 1).padStart(2, '0');
+    const day = String(today.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
+  });
+  const [logQuantity, setLogQuantity] = useState(1);
+  const [logCost, setLogCost] = useState('');
+  const [editingLog, setEditingLog] = useState(null);
+
+  // Helper function to get today's date in local format
+  const getTodayLocal = () => {
+    const today = new Date();
+    const year = today.getFullYear();
+    const month = String(today.getMonth() + 1).padStart(2, '0');
+    const day = String(today.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
+  };
+
+  // Handle escape key and outside click
+  useEffect(() => {
+    const handleEscape = (e) => {
+      if (e.key === 'Escape') {
+        onClose();
+      }
+    };
+
+    document.addEventListener('keydown', handleEscape);
+    return () => document.removeEventListener('keydown', handleEscape);
+  }, [onClose]);
+
+  const handleBackdropClick = (e) => {
+    if (e.target === e.currentTarget) {
+      onClose();
+    }
+  };
   const [editForm, setEditForm] = useState({
     name: habit?.name || '',
     description: habit?.description || '',
@@ -221,7 +259,6 @@ const HabitDetailModal = ({ habit, habitLogs = [], onClose, onLogHabit, onDelete
     const year = now.getFullYear();
     const month = now.getMonth();
     const firstDay = new Date(year, month, 1);
-    const lastDay = new Date(year, month + 1, 0);
     const startDate = new Date(firstDay);
     startDate.setDate(startDate.getDate() - firstDay.getDay());
     
@@ -265,7 +302,10 @@ const HabitDetailModal = ({ habit, habitLogs = [], onClose, onLogHabit, onDelete
   const categoryColor = habit.category === 'healthy' ? 'text-green-500' : 'text-red-500';
 
   return (
-    <div className="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full flex justify-center items-center z-50">
+    <div 
+      className="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full flex justify-center items-center z-50"
+      onClick={handleBackdropClick}
+    >
       <div className="bg-white dark:bg-gray-800 rounded-lg shadow-xl w-full max-w-4xl max-h-[90vh] overflow-y-auto">
         {/* Header */}
         <div className="p-6 border-b border-gray-200 dark:border-gray-700">
@@ -578,11 +618,6 @@ const HabitDetailModal = ({ habit, habitLogs = [], onClose, onLogHabit, onDelete
                     return (
                       <div key={dayIndex} className={dayClass} title={day.log ? `${day.log.quantity} ${habit.unit || 'times'}${day.log.cost ? ` • ${formatCurrency(day.log.cost)}` : ''}` : ''}>
                         {day.date.getDate()}
-                        {day.log && (
-                          <div className="absolute mt-6 text-xs">
-                            •
-                          </div>
-                        )}
                       </div>
                     );
                   })}
@@ -623,7 +658,7 @@ const HabitDetailModal = ({ habit, habitLogs = [], onClose, onLogHabit, onDelete
                       <div key={index} className="flex justify-between items-center py-2 border-b border-gray-200 dark:border-gray-600 last:border-b-0">
                         <div className="flex items-center space-x-3">
                           <div className="text-sm font-medium text-gray-800 dark:text-gray-100">
-                            {new Date(log.log_date).toLocaleDateString('en-US', {
+                            {new Date(log.log_date + 'T00:00:00').toLocaleDateString('en-US', {
                               weekday: 'short',
                               month: 'short',
                               day: 'numeric'
@@ -640,10 +675,36 @@ const HabitDetailModal = ({ habit, habitLogs = [], onClose, onLogHabit, onDelete
                             </span>
                           )}
                           {log.notes && habit.category === 'healthy' && (
-                            <span className="text-xs text-gray-500 dark:text-gray-400 max-w-32 truncate" title={log.notes}>
-                              "{log.notes}"
+                            <span className="text-xs text-green-700 dark:text-gray-400 max-w-32 truncate" title={log.notes}>
+                              {log.notes}
                             </span>
                           )}
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setEditingLog(log);
+                              setSelectedDate(log.log_date);
+                              setLogQuantity(log.quantity);
+                              setLogCost(log.cost ? log.cost.toString() : '');
+                              setIsAddingLog(true);
+                            }}
+                            className="p-1 text-indigo-600 hover:text-indigo-700 dark:text-indigo-400 dark:hover:text-indigo-300 rounded hover:bg-indigo-50 dark:hover:bg-indigo-900/20 transition-colors"
+                            title="Edit log"
+                          >
+                            <Pencil className="w-3 h-3" />
+                          </button>
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              if (window.confirm('Are you sure you want to delete this log?')) {
+                                onDeleteLog(habit.id, log.log_date);
+                              }
+                            }}
+                            className="p-1 text-red-600 hover:text-red-700 dark:text-red-400 dark:hover:text-red-300 rounded hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors"
+                            title="Delete log"
+                          >
+                            <Trash className="w-3 h-3" />
+                          </button>
                         </div>
                       </div>
                     ))}
@@ -653,6 +714,181 @@ const HabitDetailModal = ({ habit, habitLogs = [], onClose, onLogHabit, onDelete
               <div className="text-center py-8 text-gray-500 dark:text-gray-400">
                 <Calendar className="w-12 h-12 mx-auto mb-4 opacity-50" />
                 <p>No activity logged for this period</p>
+              </div>
+            )}
+          </div>
+
+          {/* Add/Edit Log Section */}
+          <div className="mb-6">
+            <div className="flex justify-between items-center mb-4">
+              <h3 className="text-lg font-semibold text-gray-800 dark:text-gray-100">Manage Logs</h3>
+              <button
+                onClick={() => {
+                  setIsAddingLog(true);
+                  setEditingLog(null);
+                  setSelectedDate(new Date().toISOString().split('T')[0]);
+                  setLogQuantity(1);
+                  setLogCost('');
+                }}
+                className="px-4 py-2 text-sm font-medium text-indigo-600 bg-indigo-50 dark:bg-indigo-900/20 dark:text-indigo-400 rounded-lg hover:bg-indigo-100 dark:hover:bg-indigo-900/40 transition-colors border border-indigo-200 dark:border-indigo-800 flex items-center space-x-2"
+              >
+                <Plus className="w-4 h-4" />
+                <span>Add Log</span>
+              </button>
+            </div>
+
+            {isAddingLog && (
+              <div className="bg-gray-50 dark:bg-gray-700 rounded-lg p-4 space-y-4">
+                <div className="flex justify-between items-center">
+                  <h4 className="text-md font-medium text-gray-800 dark:text-gray-100">
+                    {editingLog ? 'Edit Log' : 'Add New Log'}
+                  </h4>
+                  <button
+                    onClick={() => {
+                      setIsAddingLog(false);
+                      setEditingLog(null);
+                    }}
+                    className="text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200"
+                  >
+                    <X className="w-5 h-5" />
+                  </button>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-600 dark:text-gray-400 mb-1">
+                      Date
+                    </label>
+                    <input
+                      type="date"
+                      value={selectedDate}
+                      onChange={(e) => setSelectedDate(e.target.value)}
+                      className="w-full px-3 py-2 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-indigo-500 text-sm"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-600 dark:text-gray-400 mb-1">
+                      Quantity ({habit.unit || 'times'})
+                    </label>
+                    <div className="flex space-x-2">
+                      <button
+                        onClick={() => setLogQuantity(Math.max(1, logQuantity - 1))}
+                        className="p-2 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-600 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
+                      >
+                        <Minus className="w-4 h-4" />
+                      </button>
+                      <input
+                        type="number"
+                        value={logQuantity}
+                        onChange={(e) => setLogQuantity(Math.max(1, parseInt(e.target.value) || 1))}
+                        className="flex-1 px-3 py-2 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-indigo-500 text-center text-sm"
+                        min="1"
+                      />
+                      <button
+                        onClick={() => setLogQuantity(logQuantity + 1)}
+                        className="p-2 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-600 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
+                      >
+                        <Plus className="w-4 h-4" />
+                      </button>
+                    </div>
+                  </div>
+
+                  {habit.is_consumable && (
+                    <div className="md:col-span-2">
+                      <label className="block text-sm font-medium text-gray-600 dark:text-gray-400 mb-1">
+                        Cost ({habit.category === 'unhealthy' ? 'saved' : 'spent'}) ($)
+                      </label>
+                      <input
+                        type="number"
+                        value={logCost}
+                        onChange={(e) => setLogCost(e.target.value)}
+                        placeholder={habit.cost_per_unit ? habit.cost_per_unit.toString() : '0.00'}
+                        className="w-full px-3 py-2 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-indigo-500 text-sm"
+                        step="0.01"
+                        min="0"
+                      />
+                    </div>
+                  )}
+                </div>
+
+                <div className="flex space-x-2">
+                  <button
+                    onClick={() => {
+                      setIsAddingLog(false);
+                      setEditingLog(null);
+                    }}
+                    className="flex-1 py-2 px-4 bg-gray-200 dark:bg-gray-600 text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-300 dark:hover:bg-gray-500 transition-colors text-sm font-medium"
+                  >
+                    Cancel
+                  </button>
+                  
+                  {habit.category === 'healthy' ? (
+                    <button
+                      onClick={async () => {
+                        const cost = habit.is_consumable ? parseFloat(logCost) || habit.cost_per_unit : null;
+                        if (editingLog && editingLog.log_date !== selectedDate) {
+                          // If date changed, delete old log first
+                          await onDeleteLog(habit.id, editingLog.log_date);
+                        }
+                        
+                        if (editingLog && editingLog.log_date === selectedDate) {
+                          // Same date - use update function
+                          await onUpdateLog(habit.id, selectedDate, logQuantity, cost, 'completed');
+                        } else {
+                          // New log or date changed
+                          await onLogHabit(habit.id, logQuantity, cost, 'completed', selectedDate);
+                        }
+                        setIsAddingLog(false);
+                        setEditingLog(null);
+                      }}
+                      className="flex-1 py-2 px-4 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-all duration-200 text-sm font-medium"
+                    >
+                      {editingLog ? 'Update Log' : 'Log Habit'}
+                    </button>
+                  ) : (
+                    <>
+                      <button
+                        onClick={async () => {
+                          const cost = habit.is_consumable ? parseFloat(logCost) || habit.cost_per_unit : null;
+                          if (editingLog && editingLog.log_date !== selectedDate) {
+                            await onDeleteLog(habit.id, editingLog.log_date);
+                          }
+                          
+                          if (editingLog && editingLog.log_date === selectedDate) {
+                            await onUpdateLog(habit.id, selectedDate, logQuantity, cost, 'success');
+                          } else {
+                            await onLogHabit(habit.id, logQuantity, cost, 'success', selectedDate);
+                          }
+                          setIsAddingLog(false);
+                          setEditingLog(null);
+                        }}
+                        className="flex-1 py-2 px-4 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-all duration-200 text-sm font-medium"
+                      >
+                        {editingLog ? 'Update as Success' : 'Success'}
+                      </button>
+                      <button
+                        onClick={async () => {
+                          const cost = habit.is_consumable ? parseFloat(logCost) || habit.cost_per_unit : null;
+                          if (editingLog && editingLog.log_date !== selectedDate) {
+                            await onDeleteLog(habit.id, editingLog.log_date);
+                          }
+                          
+                          if (editingLog && editingLog.log_date === selectedDate) {
+                            await onUpdateLog(habit.id, selectedDate, logQuantity, cost, 'slipped');
+                          } else {
+                            await onLogHabit(habit.id, logQuantity, cost, 'slipped', selectedDate);
+                          }
+                          setIsAddingLog(false);
+                          setEditingLog(null);
+                        }}
+                        className="flex-1 py-2 px-4 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-all duration-200 text-sm font-medium"
+                      >
+                        {editingLog ? 'Update as Slipped' : 'Slipped'}
+                      </button>
+                    </>
+                  )}
+                </div>
               </div>
             )}
           </div>
@@ -709,14 +945,15 @@ const HabitDetailModal = ({ habit, habitLogs = [], onClose, onLogHabit, onDelete
               </button>
               <button
                 onClick={() => {
-                  const today = new Date().toISOString().split('T')[0];
+                  const today = getTodayLocal();
                   const todayLog = habitLogs.find(log => log.log_date === today);
                   if (todayLog) {
                     // If already logged, remove the log (toggle off)
                     onDeleteLog(habit.id, today);
                   } else {
                     // If not logged, add the log (toggle on)
-                    onLogHabit(habit.id, 1, habit.is_consumable ? habit.cost_per_unit : null, 'completed');
+                    const logType = habit.category === 'unhealthy' ? 'success' : 'completed';
+                    onLogHabit(habit.id, 1, habit.is_consumable ? habit.cost_per_unit : null, logType, today);
                   }
                 }}
                 className={`px-6 py-3 text-sm font-medium rounded-lg transition-colors ${
@@ -725,7 +962,7 @@ const HabitDetailModal = ({ habit, habitLogs = [], onClose, onLogHabit, onDelete
                     : 'text-white bg-indigo-600 hover:bg-indigo-700'
                 }`}
               >
-                {habitLogs.some(log => log.log_date === new Date().toISOString().split('T')[0]) 
+                {habitLogs.some(log => log.log_date === getTodayLocal()) 
                   ? 'Already Logged Today' 
                   : 'Log for Today'
                 }
