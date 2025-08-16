@@ -8,6 +8,7 @@ import AddHabitModal from '../partials/habits/AddHabitModal';
 import HabitDetailModal from '../partials/habits/HabitDetailModal';
 import { Plus, TrendingUp, TrendingDown } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
+import { getTodayLocal } from '../utils/Utils';
 
 function Habits() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
@@ -203,7 +204,7 @@ function Habits() {
     }
 
     try {
-      const logDate = customDate || new Date().toISOString().split('T')[0];
+      const logDate = customDate || getTodayLocal();
       
       const logData = {
         habit_id: habitId,
@@ -276,7 +277,7 @@ function Habits() {
     }
 
     try {
-      const dateToDelete = logDate || new Date().toISOString().split('T')[0];
+      const dateToDelete = logDate || getTodayLocal();
       
       const { error } = await supabase
         .from('habit_logs')
@@ -431,11 +432,19 @@ function Habits() {
   const unhealthyHabits = habits.filter(habit => habit.category === 'unhealthy');
   
   // Get today's logs
-  const today = new Date().toISOString().split('T')[0];
+  const today = getTodayLocal();
   const todaysLogs = habitLogs.filter(log => log.log_date === today);
   
-  // Calculate financial stats
-  const totalSpentToday = todaysLogs.reduce((sum, log) => {
+  // Get weekly logs (last 7 days) for financial stats to match individual cards
+  const weekAgo = new Date();
+  weekAgo.setDate(weekAgo.getDate() - 7);
+  const weeklyLogs = habitLogs.filter(log => {
+    const logDate = new Date(log.log_date);
+    return logDate >= weekAgo;
+  });
+  
+  // Calculate financial stats (using weekly data)
+  const totalSpentThisWeek = weeklyLogs.reduce((sum, log) => {
     const habit = habits.find(h => h.id === log.habit_id);
     if (habit?.cost_per_unit) {
       const cost = log.cost || (parseFloat(habit.cost_per_unit) * (log.quantity || 1));
@@ -451,7 +460,7 @@ function Habits() {
     return sum;
   }, 0);
   
-  const totalSavedToday = todaysLogs.reduce((sum, log) => {
+  const totalSavedThisWeek = weeklyLogs.reduce((sum, log) => {
     const habit = habits.find(h => h.id === log.habit_id);
     if (habit?.category === 'unhealthy' && habit?.cost_per_unit && log.notes === 'success') {
       // For unhealthy habits, only count as saved if they successfully avoided
@@ -532,8 +541,8 @@ function Habits() {
                 healthyHabits={healthyHabits.length}
                 unhealthyHabits={unhealthyHabits.length}
                 completedToday={todaysLogs.length}
-                totalSpentToday={totalSpentToday}
-                totalSavedToday={totalSavedToday}
+                totalSpentThisWeek={totalSpentThisWeek}
+                totalSavedThisWeek={totalSavedThisWeek}
               />
 
               {/* Habits Grid */}

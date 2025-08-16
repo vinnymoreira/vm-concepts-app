@@ -49,8 +49,8 @@ const StatCard = ({ icon: Icon, title, value, subtitle, color = 'indigo' }) => {
 const HabitsOverview = ({ 
   totalHabits, 
   completedToday, 
-  totalSpentToday, 
-  totalSavedToday,
+  totalSpentThisWeek, 
+  totalSavedThisWeek,
   healthyHabits, 
   unhealthyHabits 
 }) => {
@@ -74,12 +74,12 @@ const HabitsOverview = ({
         color="red"
       />
 
-      {/* Money Saved Today */}
+      {/* Money Saved This Week */}
       <StatCard
         icon={DollarSign}
         title="Money Saved"
-        value={`${totalSavedToday.toFixed(2)}`}
-        subtitle="avoided spending"
+        value={`$${totalSavedThisWeek.toFixed(2)}`}
+        subtitle="this week"
         color="green"
       />
 

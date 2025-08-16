@@ -1,101 +1,18 @@
 import React, { useState } from 'react';
 import { Plus, Minus, DollarSign, Calendar, TrendingUp, TrendingDown } from 'lucide-react';
+import { getTodayLocal, calculateStreak } from '../../utils/Utils';
 
 const HabitCard = ({ habit, habitLogs = [], onLogHabit, onDeleteLog, onHabitClick }) => {
   const [isLogging, setIsLogging] = useState(false);
   const [logQuantity, setLogQuantity] = useState(1);
   const [logCost, setLogCost] = useState('');
 
-  // Helper function to get today's date in local format
-  const getTodayLocal = () => {
-    const today = new Date();
-    const year = today.getFullYear();
-    const month = String(today.getMonth() + 1).padStart(2, '0');
-    const day = String(today.getDate()).padStart(2, '0');
-    return `${year}-${month}-${day}`;
-  };
 
   const today = getTodayLocal();
   const todayLog = habitLogs.find(log => log.log_date === today);
   const isCompletedToday = !!todayLog;
 
-  // Calculate streak based on habit frequency
-  const calculateStreak = () => {
-    if (!habitLogs || habitLogs.length === 0) return 0;
-    
-    const sortedLogs = habitLogs
-      .sort((a, b) => new Date(b.log_date) - new Date(a.log_date));
-    
-    const today = new Date();
-    const todayStr = getTodayLocal();
-    
-    // Get the frequency period in days
-    const getFrequencyDays = () => {
-      switch (habit.frequency_period) {
-        case 'weekly': return 7;
-        case 'monthly': return 30;
-        case 'daily':
-        default: return 1;
-      }
-    };
-    
-    const frequencyDays = getFrequencyDays();
-    let streak = 0;
-    let currentPeriodStart = new Date(today);
-    
-    // For daily habits, use the original logic
-    if (frequencyDays === 1) {
-      let expectedDate = new Date(today);
-      
-      for (const log of sortedLogs) {
-        const logDate = new Date(log.log_date);
-        const expectedYear = expectedDate.getFullYear();
-        const expectedMonth = String(expectedDate.getMonth() + 1).padStart(2, '0');
-        const expectedDay = String(expectedDate.getDate()).padStart(2, '0');
-        const expectedDateStr = `${expectedYear}-${expectedMonth}-${expectedDay}`;
-        
-        if (log.log_date === expectedDateStr) {
-          streak++;
-          expectedDate.setDate(expectedDate.getDate() - 1);
-        } else {
-          break;
-        }
-      }
-    } else {
-      // For weekly/monthly habits, check if there's a log in each period
-      for (let period = 0; period < 52; period++) { // Max 52 periods to check
-        const periodEnd = new Date(currentPeriodStart);
-        const periodStart = new Date(currentPeriodStart);
-        periodStart.setDate(periodStart.getDate() - frequencyDays + 1);
-        
-        const startYear = periodStart.getFullYear();
-        const startMonth = String(periodStart.getMonth() + 1).padStart(2, '0');
-        const startDay = String(periodStart.getDate()).padStart(2, '0');
-        const periodStartStr = `${startYear}-${startMonth}-${startDay}`;
-        
-        const endYear = periodEnd.getFullYear();
-        const endMonth = String(periodEnd.getMonth() + 1).padStart(2, '0');
-        const endDay = String(periodEnd.getDate()).padStart(2, '0');
-        const periodEndStr = `${endYear}-${endMonth}-${endDay}`;
-        
-        // Check if there's a log in this period
-        const hasLogInPeriod = sortedLogs.some(log => 
-          log.log_date >= periodStartStr && log.log_date <= periodEndStr
-        );
-        
-        if (hasLogInPeriod) {
-          streak++;
-          currentPeriodStart.setDate(currentPeriodStart.getDate() - frequencyDays);
-        } else {
-          break;
-        }
-      }
-    }
-    
-    return streak;
-  };
-
-  const streak = calculateStreak();
+  const streak = calculateStreak(habitLogs, habit);
 
   // Calculate weekly total for consumables
   const weeklyTotal = habitLogs

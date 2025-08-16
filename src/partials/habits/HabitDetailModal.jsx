@@ -1,29 +1,16 @@
 import React, { useState, useEffect } from 'react';
 import { X, Calendar, TrendingUp, TrendingDown, DollarSign, Target, Edit3, Save, RotateCcw, Trash2, Plus, Minus, Pencil, Trash } from 'lucide-react';
+import { getTodayLocal, formatDateForDisplay, isToday, calculateStreak } from '../../utils/Utils';
 
 const HabitDetailModal = ({ habit, habitLogs = [], onClose, onLogHabit, onDeleteLog, onUpdateLog, onUpdateHabit, onDeleteHabit }) => {
   const [selectedPeriod, setSelectedPeriod] = useState('week'); // 'week', 'month', 'year'
   const [isEditing, setIsEditing] = useState(false);
   const [isAddingLog, setIsAddingLog] = useState(false);
-  const [selectedDate, setSelectedDate] = useState(() => {
-    const today = new Date();
-    const year = today.getFullYear();
-    const month = String(today.getMonth() + 1).padStart(2, '0');
-    const day = String(today.getDate()).padStart(2, '0');
-    return `${year}-${month}-${day}`;
-  });
+  const [selectedDate, setSelectedDate] = useState(() => getTodayLocal());
   const [logQuantity, setLogQuantity] = useState(1);
   const [logCost, setLogCost] = useState('');
   const [editingLog, setEditingLog] = useState(null);
 
-  // Helper function to get today's date in local format
-  const getTodayLocal = () => {
-    const today = new Date();
-    const year = today.getFullYear();
-    const month = String(today.getMonth() + 1).padStart(2, '0');
-    const day = String(today.getDate()).padStart(2, '0');
-    return `${year}-${month}-${day}`;
-  };
 
   // Handle escape key and outside click
   useEffect(() => {
@@ -187,71 +174,7 @@ const HabitDetailModal = ({ habit, habitLogs = [], onClose, onLogHabit, onDelete
 
   const stats = calculateStats();
 
-  // Calculate current streak based on habit frequency
-  const calculateStreak = () => {
-    if (!habitLogs || habitLogs.length === 0) return 0;
-    
-    const sortedLogs = habitLogs
-      .sort((a, b) => new Date(b.log_date) - new Date(a.log_date));
-    
-    const today = new Date();
-    
-    // Get the frequency period in days
-    const getFrequencyDays = () => {
-      switch (habit.frequency_period) {
-        case 'weekly': return 7;
-        case 'monthly': return 30;
-        case 'daily':
-        default: return 1;
-      }
-    };
-    
-    const frequencyDays = getFrequencyDays();
-    let streak = 0;
-    let currentPeriodStart = new Date(today);
-    
-    // For daily habits, use consecutive day logic
-    if (frequencyDays === 1) {
-      let expectedDate = new Date(today);
-      
-      for (const log of sortedLogs) {
-        const expectedDateStr = expectedDate.toISOString().split('T')[0];
-        
-        if (log.log_date === expectedDateStr) {
-          streak++;
-          expectedDate.setDate(expectedDate.getDate() - 1);
-        } else {
-          break;
-        }
-      }
-    } else {
-      // For weekly/monthly habits, check if there's a log in each period
-      for (let period = 0; period < 52; period++) { // Max 52 periods to check
-        const periodEnd = new Date(currentPeriodStart);
-        const periodStart = new Date(currentPeriodStart);
-        periodStart.setDate(periodStart.getDate() - frequencyDays + 1);
-        
-        const periodStartStr = periodStart.toISOString().split('T')[0];
-        const periodEndStr = periodEnd.toISOString().split('T')[0];
-        
-        // Check if there's a log in this period
-        const hasLogInPeriod = sortedLogs.some(log => 
-          log.log_date >= periodStartStr && log.log_date <= periodEndStr
-        );
-        
-        if (hasLogInPeriod) {
-          streak++;
-          currentPeriodStart.setDate(currentPeriodStart.getDate() - frequencyDays);
-        } else {
-          break;
-        }
-      }
-    }
-    
-    return streak;
-  };
-
-  const currentStreak = calculateStreak();
+  const currentStreak = calculateStreak(habitLogs, habit);
 
   // Generate calendar view for the current month
   const generateCalendarData = () => {
@@ -271,14 +194,14 @@ const HabitDetailModal = ({ habit, habitLogs = [], onClose, onLogHabit, onDelete
         const dateStr = currentDate.toISOString().split('T')[0];
         const log = habitLogs.find(log => log.log_date === dateStr);
         const isCurrentMonth = currentDate.getMonth() === month;
-        const isToday = dateStr === now.toISOString().split('T')[0];
+        const isTodayDate = isToday(dateStr);
         
         weekDays.push({
           date: new Date(currentDate),
           dateStr,
           log,
           isCurrentMonth,
-          isToday
+          isToday: isTodayDate
         });
         
         currentDate.setDate(currentDate.getDate() + 1);
@@ -658,11 +581,7 @@ const HabitDetailModal = ({ habit, habitLogs = [], onClose, onLogHabit, onDelete
                       <div key={index} className="flex justify-between items-center py-2 border-b border-gray-200 dark:border-gray-600 last:border-b-0">
                         <div className="flex items-center space-x-3">
                           <div className="text-sm font-medium text-gray-800 dark:text-gray-100">
-                            {new Date(log.log_date + 'T00:00:00').toLocaleDateString('en-US', {
-                              weekday: 'short',
-                              month: 'short',
-                              day: 'numeric'
-                            })}
+                            {formatDateForDisplay(log.log_date)}
                           </div>
                           <div className="text-sm text-gray-600 dark:text-gray-400">
                             {log.quantity} {habit.unit || 'times'}
@@ -726,7 +645,7 @@ const HabitDetailModal = ({ habit, habitLogs = [], onClose, onLogHabit, onDelete
                 onClick={() => {
                   setIsAddingLog(true);
                   setEditingLog(null);
-                  setSelectedDate(new Date().toISOString().split('T')[0]);
+                  setSelectedDate(getTodayLocal());
                   setLogQuantity(1);
                   setLogCost('');
                 }}
@@ -957,7 +876,7 @@ const HabitDetailModal = ({ habit, habitLogs = [], onClose, onLogHabit, onDelete
                   }
                 }}
                 className={`px-6 py-3 text-sm font-medium rounded-lg transition-colors ${
-                  habitLogs.some(log => log.log_date === new Date().toISOString().split('T')[0])
+                  habitLogs.some(log => log.log_date === getTodayLocal())
                     ? 'text-green-700 bg-green-50 dark:bg-green-900/20 dark:text-green-300 border border-green-200 dark:border-green-800 hover:bg-green-100 dark:hover:bg-green-900/40'
                     : 'text-white bg-indigo-600 hover:bg-indigo-700'
                 }`}
