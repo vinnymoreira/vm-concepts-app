@@ -120,3 +120,123 @@ export const calculateStreak = (habitLogs, habit) => {
   
   return streak;
 };
+
+export const celebrateHabitComplete = (habitCategory = 'healthy') => {
+  // Dynamically import confetti to avoid SSR issues
+  import('canvas-confetti').then((confetti) => {
+    const colors = habitCategory === 'healthy' 
+      ? ['#22c55e', '#16a34a', '#15803d'] // Green colors for healthy habits
+      : ['#ef4444', '#dc2626', '#b91c1c']; // Red colors for avoiding vices
+
+    // Main burst
+    confetti.default({
+      particleCount: 100,
+      spread: 70,
+      origin: { y: 0.6 },
+      colors: colors
+    });
+
+    // Side bursts for extra celebration
+    setTimeout(() => {
+      confetti.default({
+        particleCount: 50,
+        angle: 60,
+        spread: 55,
+        origin: { x: 0 },
+        colors: colors
+      });
+    }, 100);
+
+    setTimeout(() => {
+      confetti.default({
+        particleCount: 50,
+        angle: 120,
+        spread: 55,
+        origin: { x: 1 },
+        colors: colors
+      });
+    }, 200);
+  }).catch((error) => {
+    console.log('Confetti not available:', error);
+  });
+};
+
+export const exportHabitsToCSV = (habits, habitLogs) => {
+  // Create CSV header
+  const headers = [
+    'Habit Name',
+    'Category',
+    'Date',
+    'Quantity',
+    'Unit',
+    'Cost',
+    'Notes',
+    'Created At'
+  ];
+
+  // Create CSV rows
+  const rows = [];
+  
+  // Add habits data with their logs
+  habits.forEach(habit => {
+    const habitHasLogs = habitLogs.some(log => log.habit_id === habit.id);
+    
+    if (habitHasLogs) {
+      // Add logs for this habit
+      habitLogs
+        .filter(log => log.habit_id === habit.id)
+        .sort((a, b) => new Date(b.log_date) - new Date(a.log_date))
+        .forEach(log => {
+          rows.push([
+            habit.name,
+            habit.category,
+            log.log_date,
+            log.quantity || 1,
+            habit.unit || 'times',
+            log.cost || '',
+            log.notes || '',
+            habit.created_at?.split('T')[0] || ''
+          ]);
+        });
+    } else {
+      // Add habit without logs
+      rows.push([
+        habit.name,
+        habit.category,
+        '',
+        '',
+        habit.unit || 'times',
+        '',
+        'No logs yet',
+        habit.created_at?.split('T')[0] || ''
+      ]);
+    }
+  });
+
+  // Convert to CSV format
+  const csvContent = [
+    headers.join(','),
+    ...rows.map(row => 
+      row.map(cell => 
+        // Escape quotes and wrap in quotes if contains comma
+        typeof cell === 'string' && (cell.includes(',') || cell.includes('"'))
+          ? `"${cell.replace(/"/g, '""')}"`
+          : cell
+      ).join(',')
+    )
+  ].join('\n');
+
+  // Create and download file
+  const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+  const link = document.createElement('a');
+  
+  if (link.download !== undefined) {
+    const url = URL.createObjectURL(blob);
+    link.setAttribute('href', url);
+    link.setAttribute('download', `habits-export-${getTodayLocal()}.csv`);
+    link.style.visibility = 'hidden';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  }
+};

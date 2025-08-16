@@ -1,9 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { X, Calendar, TrendingUp, TrendingDown, DollarSign, Target, Edit3, Save, RotateCcw, Trash2, Plus, Minus, Pencil, Trash } from 'lucide-react';
-import { getTodayLocal, formatDateForDisplay, isToday, calculateStreak } from '../../utils/Utils';
+import { getTodayLocal, formatDateForDisplay, isToday, calculateStreak, celebrateHabitComplete } from '../../utils/Utils';
+import HabitDatePicker from '../../components/HabitDatePicker';
 
 const HabitDetailModal = ({ habit, habitLogs = [], onClose, onLogHabit, onDeleteLog, onUpdateLog, onUpdateHabit, onDeleteHabit }) => {
-  const [selectedPeriod, setSelectedPeriod] = useState('week'); // 'week', 'month', 'year'
   const [isEditing, setIsEditing] = useState(false);
   const [isAddingLog, setIsAddingLog] = useState(false);
   const [selectedDate, setSelectedDate] = useState(() => getTodayLocal());
@@ -41,7 +41,7 @@ const HabitDetailModal = ({ habit, habitLogs = [], onClose, onLogHabit, onDelete
   });
 
   const commonIcons = {
-    healthy: ['💪', '🏃‍♂️', '📖', '🧘‍♀️', '💧', '🥗', '😴', '🚶‍♀️', '🏋️‍♂️', '🧠', '🎯'],
+    healthy: ['💪', '🏃‍♂️', '📖', '🧘‍♀️', '💧', '🥗', '😴', '🚶‍♀️', '🏋️‍♂️', '🧠', '🎯', '🎵'],
     unhealthy: ['🚬', '🍺', '🍔', '📱', '🎮', '☕', '🍰', '🛋️', '📺', '🛒', '💸']
   };
 
@@ -97,7 +97,7 @@ const HabitDetailModal = ({ habit, habitLogs = [], onClose, onLogHabit, onDelete
       frequency_period: habit.frequency_period || 'daily',
       unit: habit.unit || 'times',
       cost_per_unit: habit.cost_per_unit || '',
-      icon: habit.icon || '📋',
+      icon: habit.icon || '',
       color: habit.color || '#6366f1'
     });
     setIsEditing(false);
@@ -113,24 +113,10 @@ const HabitDetailModal = ({ habit, habitLogs = [], onClose, onLogHabit, onDelete
     }
   };
 
-  // Calculate statistics
+  // Calculate statistics (last 30 days)
   const calculateStats = () => {
     const now = new Date();
-    let startDate;
-    
-    switch (selectedPeriod) {
-      case 'week':
-        startDate = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
-        break;
-      case 'month':
-        startDate = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
-        break;
-      case 'year':
-        startDate = new Date(now.getTime() - 365 * 24 * 60 * 60 * 1000);
-        break;
-      default:
-        startDate = new Date(0);
-    }
+    const startDate = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
 
     const periodLogs = habitLogs.filter(log => 
       new Date(log.log_date) >= startDate
@@ -331,24 +317,34 @@ const HabitDetailModal = ({ habit, habitLogs = [], onClose, onLogHabit, onDelete
                   {/* Icon Selection */}
                   <div>
                     <label className="block text-sm font-medium text-gray-600 dark:text-gray-400 mb-2">
-                      Choose Icon
+                      Choose Icon (Optional)
                     </label>
-                    <div className="grid grid-cols-11 gap-2">
+                    <div className="grid grid-cols-12 gap-3">
                       {commonIcons[habit.category].map((icon, index) => (
                         <button
                           key={index}
                           type="button"
-                          onClick={() => setEditForm(prev => ({ ...prev, icon }))}
-                          className={`w-8 h-8 text-lg rounded-lg border-2 transition-all duration-200 hover:scale-105 ${
+                          onClick={() => setEditForm(prev => ({ 
+                            ...prev, 
+                            icon: prev.icon === icon ? '' : icon 
+                          }))}
+                          className={`w-11 h-11 text-xl rounded-xl border-2 transition-all duration-200 hover:scale-105 ${
                             editForm.icon === icon 
                               ? 'border-indigo-500 bg-indigo-50 dark:bg-indigo-950/50 scale-105' 
-                              : 'border-gray-200 dark:border-gray-600 hover:border-indigo-300 dark:hover:border-indigo-500'
+                              : 'border-gray-200 dark:border-gray-700 hover:border-indigo-300 dark:hover:border-indigo-600'
                           }`}
                         >
                           {icon}
                         </button>
                       ))}
                     </div>
+                    {editForm.icon && (
+                      <div className="mt-3 text-center">
+                        <p className="text-xs text-gray-500 dark:text-gray-400">
+                          Click the selected icon again to deselect
+                        </p>
+                      </div>
+                    )}
                   </div>
 
                   {/* Color Selection */}
@@ -375,7 +371,7 @@ const HabitDetailModal = ({ habit, habitLogs = [], onClose, onLogHabit, onDelete
                 </div>
               ) : (
                 <>
-                  <span className="text-4xl">{habit.icon || '📋'}</span>
+                  {habit.icon && <span className="text-4xl">{habit.icon}</span>}
                   <div>
                     <h2 className="text-2xl font-bold text-gray-800 dark:text-gray-100">
                       {habit.name}
@@ -440,130 +436,112 @@ const HabitDetailModal = ({ habit, habitLogs = [], onClose, onLogHabit, onDelete
         </div>
 
         <div className="p-6">
-          {/* Period Selector */}
-          <div className="flex justify-center mb-6">
-            <div className="flex rounded-lg border border-gray-300 dark:border-gray-600">
-              {[
-                { key: 'week', label: 'Week' },
-                { key: 'month', label: 'Month' },
-                { key: 'year', label: 'Year' }
-              ].map((period) => (
-                <button
-                  key={period.key}
-                  onClick={() => setSelectedPeriod(period.key)}
-                  className={`px-4 py-2 text-sm font-medium ${
-                    selectedPeriod === period.key
-                      ? 'bg-indigo-500 text-white'
-                      : 'bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700'
-                  } ${period.key === 'week' ? 'rounded-l-lg' : period.key === 'year' ? 'rounded-r-lg' : ''} border-r border-gray-300 dark:border-gray-600 last:border-r-0`}
-                >
-                  {period.label}
-                </button>
-              ))}
-            </div>
-          </div>
 
-          {/* Statistics Cards */}
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
-            <div className="bg-gray-50 dark:bg-gray-700 p-4 rounded-lg text-center">
-              <div className="text-2xl font-bold text-indigo-500">{currentStreak}</div>
-              <div className="text-sm text-gray-500 dark:text-gray-400">Current Streak</div>
-            </div>
-            
-            <div className="bg-gray-50 dark:bg-gray-700 p-4 rounded-lg text-center">
-              <div className="text-2xl font-bold text-green-500">{stats.completedDays}</div>
-              <div className="text-sm text-gray-500 dark:text-gray-400">Days Completed</div>
-            </div>
-            
-            <div className="bg-gray-50 dark:bg-gray-700 p-4 rounded-lg text-center">
-              <div className="text-2xl font-bold text-blue-500">{stats.completionRate.toFixed(1)}%</div>
-              <div className="text-sm text-gray-500 dark:text-gray-400">Completion Rate</div>
-            </div>
-            
-            {habit.is_consumable ? (
-              <div className="bg-gray-50 dark:bg-gray-700 p-4 rounded-lg text-center">
-                <div className={`text-2xl font-bold ${
-                  habit.category === 'healthy' 
-                    ? 'text-orange-500' 
-                    : 'text-green-500'
-                }`}>
-                  {formatCurrency(stats.totalCost)}
+          {!isEditing && (
+            <>
+              {/* Statistics Cards */}
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
+                <div className="bg-gray-50 dark:bg-gray-700 p-4 rounded-lg text-center">
+                  <div className="text-2xl font-bold text-indigo-500">{currentStreak}</div>
+                  <div className="text-sm text-gray-500 dark:text-gray-400">Current Streak</div>
                 </div>
-                <div className="text-sm text-gray-500 dark:text-gray-400">
-                  {habit.category === 'healthy' ? 'Total Spent' : 'Total Saved'}
+                
+                <div className="bg-gray-50 dark:bg-gray-700 p-4 rounded-lg text-center">
+                  <div className="text-2xl font-bold text-green-500">{stats.completedDays}</div>
+                  <div className="text-sm text-gray-500 dark:text-gray-400">Days Completed</div>
                 </div>
-              </div>
-            ) : (
-              <div className="bg-gray-50 dark:bg-gray-700 p-4 rounded-lg text-center">
-                <div className="text-2xl font-bold text-purple-500">{stats.totalQuantity}</div>
-                <div className="text-sm text-gray-500 dark:text-gray-400">Total {habit.unit || 'Times'}</div>
-              </div>
-            )}
-          </div>
-
-          {/* Calendar View */}
-          <div className="mb-8">
-            <h3 className="text-lg font-semibold text-gray-800 dark:text-gray-100 mb-4 flex items-center">
-              <Calendar className="w-5 h-5 mr-2" />
-              This Month
-            </h3>
-            
-            <div className="bg-gray-50 dark:bg-gray-700 rounded-lg p-4">
-              {/* Calendar Header */}
-              <div className="grid grid-cols-7 gap-1 mb-2">
-                {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map(day => (
-                  <div key={day} className="text-center text-sm font-medium text-gray-500 dark:text-gray-400 py-2">
-                    {day}
+                
+                <div className="bg-gray-50 dark:bg-gray-700 p-4 rounded-lg text-center">
+                  <div className="text-2xl font-bold text-blue-500">{stats.completionRate.toFixed(1)}%</div>
+                  <div className="text-sm text-gray-500 dark:text-gray-400">Completion Rate</div>
+                </div>
+                
+                {habit.is_consumable ? (
+                  <div className="bg-gray-50 dark:bg-gray-700 p-4 rounded-lg text-center">
+                    <div className={`text-2xl font-bold ${
+                      habit.category === 'healthy' 
+                        ? 'text-orange-500' 
+                        : 'text-green-500'
+                    }`}>
+                      {formatCurrency(stats.totalCost)}
+                    </div>
+                    <div className="text-sm text-gray-500 dark:text-gray-400">
+                      {habit.category === 'healthy' ? 'Total Spent' : 'Total Saved'}
+                    </div>
                   </div>
-                ))}
+                ) : (
+                  <div className="bg-gray-50 dark:bg-gray-700 p-4 rounded-lg text-center">
+                    <div className="text-2xl font-bold text-purple-500">{stats.totalQuantity}</div>
+                    <div className="text-sm text-gray-500 dark:text-gray-400">Total {habit.unit || 'Times'}</div>
+                  </div>
+                )}
               </div>
 
-              {/* Calendar Body */}
-              {calendarData.map((week, weekIndex) => (
-                <div key={weekIndex} className="grid grid-cols-7 gap-1">
-                  {week.map((day, dayIndex) => {
-                    let dayClass = "aspect-square flex items-center justify-center text-sm rounded-lg ";
-                    
-                    if (!day.isCurrentMonth) {
-                      dayClass += "text-gray-300 dark:text-gray-600";
-                    } else if (day.isToday) {
-                      dayClass += "bg-indigo-500 text-white font-bold";
-                    } else if (day.log) {
-                      if (habit.category === 'healthy') {
-                        dayClass += "bg-green-200 dark:bg-green-800 text-green-800 dark:text-green-200 font-medium";
-                      } else {
-                        dayClass += "bg-red-200 dark:bg-red-800 text-red-800 dark:text-red-200 font-medium";
-                      }
-                    } else {
-                      dayClass += "text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600";
-                    }
-
-                    return (
-                      <div key={dayIndex} className={dayClass} title={day.log ? `${day.log.quantity} ${habit.unit || 'times'}${day.log.cost ? ` • ${formatCurrency(day.log.cost)}` : ''}` : ''}>
-                        {day.date.getDate()}
+              {/* Calendar View */}
+              <div className="mb-8">
+                <h3 className="text-lg font-semibold text-gray-800 dark:text-gray-100 mb-4 flex items-center">
+                  <Calendar className="w-5 h-5 mr-2" />
+                  This Month
+                </h3>
+                
+                <div className="bg-gray-50 dark:bg-gray-700 rounded-lg p-4">
+                  {/* Calendar Header */}
+                  <div className="grid grid-cols-7 gap-1 mb-2">
+                    {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map(day => (
+                      <div key={day} className="text-center text-sm font-medium text-gray-500 dark:text-gray-400 py-2">
+                        {day}
                       </div>
-                    );
-                  })}
+                    ))}
+                  </div>
+
+                  {/* Calendar Body */}
+                  {calendarData.map((week, weekIndex) => (
+                    <div key={weekIndex} className="grid grid-cols-7 gap-1">
+                      {week.map((day, dayIndex) => {
+                        let dayClass = "aspect-square flex items-center justify-center text-sm rounded-lg ";
+                        
+                        if (!day.isCurrentMonth) {
+                          dayClass += "text-gray-300 dark:text-gray-600";
+                        } else if (day.isToday) {
+                          dayClass += "bg-indigo-500 text-white font-bold";
+                        } else if (day.log) {
+                          if (habit.category === 'healthy') {
+                            dayClass += "bg-green-200 dark:bg-green-800 text-green-800 dark:text-green-200 font-medium";
+                          } else {
+                            dayClass += "bg-red-200 dark:bg-red-800 text-red-800 dark:text-red-200 font-medium";
+                          }
+                        } else {
+                          dayClass += "text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600";
+                        }
+
+                        return (
+                          <div key={dayIndex} className={dayClass} title={day.log ? `${day.log.quantity} ${habit.unit || 'times'}${day.log.cost ? ` • ${formatCurrency(day.log.cost)}` : ''}` : ''}>
+                            {day.date.getDate()}
+                          </div>
+                        );
+                      })}
+                    </div>
+                  ))}
                 </div>
-              ))}
-            </div>
-            
-            {/* Calendar Legend */}
-            <div className="flex justify-center space-x-6 mt-4 text-sm">
-              <div className="flex items-center space-x-2">
-                <div className="w-4 h-4 bg-indigo-500 rounded"></div>
-                <span className="text-gray-600 dark:text-gray-400">Today</span>
+                
+                {/* Calendar Legend */}
+                <div className="flex justify-center space-x-6 mt-4 text-sm">
+                  <div className="flex items-center space-x-2">
+                    <div className="w-4 h-4 bg-indigo-500 rounded"></div>
+                    <span className="text-gray-600 dark:text-gray-400">Today</span>
+                  </div>
+                  <div className="flex items-center space-x-2">
+                    <div className={`w-4 h-4 rounded ${habit.category === 'healthy' ? 'bg-green-200 dark:bg-green-800' : 'bg-red-200 dark:bg-red-800'}`}></div>
+                    <span className="text-gray-600 dark:text-gray-400">Completed</span>
+                  </div>
+                  <div className="flex items-center space-x-2">
+                    <div className="w-4 h-4 bg-gray-200 dark:bg-gray-600 rounded"></div>
+                    <span className="text-gray-600 dark:text-gray-400">Not completed</span>
+                  </div>
+                </div>
               </div>
-              <div className="flex items-center space-x-2">
-                <div className={`w-4 h-4 rounded ${habit.category === 'healthy' ? 'bg-green-200 dark:bg-green-800' : 'bg-red-200 dark:bg-red-800'}`}></div>
-                <span className="text-gray-600 dark:text-gray-400">Completed</span>
-              </div>
-              <div className="flex items-center space-x-2">
-                <div className="w-4 h-4 bg-gray-200 dark:bg-gray-600 rounded"></div>
-                <span className="text-gray-600 dark:text-gray-400">Not completed</span>
-              </div>
-            </div>
-          </div>
+            </>
+          )}
 
           {/* Recent Activity */}
           <div className="mb-6">
@@ -678,11 +656,9 @@ const HabitDetailModal = ({ habit, habitLogs = [], onClose, onLogHabit, onDelete
                     <label className="block text-sm font-medium text-gray-600 dark:text-gray-400 mb-1">
                       Date
                     </label>
-                    <input
-                      type="date"
-                      value={selectedDate}
-                      onChange={(e) => setSelectedDate(e.target.value)}
-                      className="w-full px-3 py-2 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-indigo-500 text-sm"
+                    <HabitDatePicker
+                      selectedDate={selectedDate}
+                      onDateSelect={setSelectedDate}
                     />
                   </div>
 
@@ -760,6 +736,10 @@ const HabitDetailModal = ({ habit, habitLogs = [], onClose, onLogHabit, onDelete
                         }
                         setIsAddingLog(false);
                         setEditingLog(null);
+                        // Celebrate if it's today
+                        if (selectedDate === getTodayLocal()) {
+                          celebrateHabitComplete(habit.category);
+                        }
                       }}
                       className="flex-1 py-2 px-4 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-all duration-200 text-sm font-medium"
                     >
@@ -781,6 +761,10 @@ const HabitDetailModal = ({ habit, habitLogs = [], onClose, onLogHabit, onDelete
                           }
                           setIsAddingLog(false);
                           setEditingLog(null);
+                          // Celebrate if it's today
+                          if (selectedDate === getTodayLocal()) {
+                            celebrateHabitComplete(habit.category);
+                          }
                         }}
                         className="flex-1 py-2 px-4 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-all duration-200 text-sm font-medium"
                       >
@@ -813,7 +797,7 @@ const HabitDetailModal = ({ habit, habitLogs = [], onClose, onLogHabit, onDelete
           </div>
 
           {/* Goal Progress */}
-          {habit.target_frequency && (
+          {!isEditing && habit.target_frequency && (
             <div className="mb-6">
               <h3 className="text-lg font-semibold text-gray-800 dark:text-gray-100 mb-4 flex items-center">
                 <Target className="w-5 h-5 mr-2" />
@@ -830,17 +814,15 @@ const HabitDetailModal = ({ habit, habitLogs = [], onClose, onLogHabit, onDelete
                   </span>
                 </div>
                 
-                {selectedPeriod === 'week' && (
-                  <div className="w-full bg-gray-200 dark:bg-gray-600 rounded-full h-3">
-                    <div 
-                      className={`h-3 rounded-full transition-all duration-300 ${
-                        stats.completionRate >= 80 ? 'bg-green-500' : 
-                        stats.completionRate >= 60 ? 'bg-yellow-500' : 'bg-red-500'
-                      }`}
-                      style={{ width: `${Math.min(100, stats.completionRate)}%` }}
-                    ></div>
-                  </div>
-                )}
+                <div className="w-full bg-gray-200 dark:bg-gray-600 rounded-full h-3">
+                  <div 
+                    className={`h-3 rounded-full transition-all duration-300 ${
+                      stats.completionRate >= 80 ? 'bg-green-500' : 
+                      stats.completionRate >= 60 ? 'bg-yellow-500' : 'bg-red-500'
+                    }`}
+                    style={{ width: `${Math.min(100, stats.completionRate)}%` }}
+                  ></div>
+                </div>
               </div>
             </div>
           )}
@@ -873,6 +855,8 @@ const HabitDetailModal = ({ habit, habitLogs = [], onClose, onLogHabit, onDelete
                     // If not logged, add the log (toggle on)
                     const logType = habit.category === 'unhealthy' ? 'success' : 'completed';
                     onLogHabit(habit.id, 1, habit.is_consumable ? habit.cost_per_unit : null, logType, today);
+                    // Celebrate the completion!
+                    celebrateHabitComplete(habit.category);
                   }
                 }}
                 className={`px-6 py-3 text-sm font-medium rounded-lg transition-colors ${

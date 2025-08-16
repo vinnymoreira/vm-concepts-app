@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { X, DollarSign, Smile, AlertTriangle, Ban, Plus } from 'lucide-react';
+import { X, DollarSign, Smile, AlertTriangle, Ban, Plus, Zap } from 'lucide-react';
 
 const AddHabitModal = ({ isOpen, onClose, onAddHabit }) => {
   const [formData, setFormData] = useState({
@@ -11,15 +11,140 @@ const AddHabitModal = ({ isOpen, onClose, onAddHabit }) => {
     target_frequency: 1,
     frequency_period: 'daily',
     cost_per_unit: '',
-    icon: '📋',
+    icon: '',
     color: '#6366f1'
   });
   
   const [errors, setErrors] = useState({});
   const [showDescription, setShowDescription] = useState(false);
+  const [showTemplates, setShowTemplates] = useState(true);
+  const [isTransitioning, setIsTransitioning] = useState(false);
+
+  const habitTemplates = {
+    healthy: [
+      {
+        name: "Drink 8 glasses of water",
+        description: "Stay hydrated throughout the day",
+        icon: "💧",
+        unit: "glasses",
+        target_frequency: 8,
+        frequency_period: "daily",
+        color: "#06b6d4"
+      },
+      {
+        name: "Morning workout",
+        description: "Start your day with energy",
+        icon: "🏋️‍♂️",
+        unit: "minutes",
+        target_frequency: 30,
+        frequency_period: "daily",
+        color: "#22c55e"
+      },
+      {
+        name: "Read before bed",
+        description: "Expand your mind daily",
+        icon: "📖",
+        unit: "minutes",
+        target_frequency: 20,
+        frequency_period: "daily",
+        color: "#8b5cf6"
+      },
+      {
+        name: "Meditation",
+        description: "Find your inner peace",
+        icon: "🧘‍♀️",
+        unit: "minutes",
+        target_frequency: 10,
+        frequency_period: "daily",
+        color: "#ec4899"
+      },
+      {
+        name: "Walk 10,000 steps",
+        description: "Stay active and healthy",
+        icon: "🚶‍♀️",
+        unit: "steps",
+        target_frequency: 10000,
+        frequency_period: "daily",
+        color: "#f97316"
+      },
+      {
+        name: "Practice gratitude",
+        description: "Write down 3 things you're grateful for",
+        icon: "🙏",
+        unit: "items",
+        target_frequency: 3,
+        frequency_period: "daily",
+        color: "#eab308"
+      },
+      {
+        name: "Practice music",
+        description: "Play an instrument or practice vocals",
+        icon: "🎵",
+        unit: "minutes",
+        target_frequency: 30,
+        frequency_period: "daily",
+        color: "#8b5cf6"
+      }
+    ],
+    unhealthy: [
+      {
+        name: "Stop smoking",
+        description: "Quit cigarettes for better health",
+        icon: "🚬",
+        unit: "cigarettes",
+        target_frequency: 1,
+        frequency_period: "daily",
+        color: "#ef4444",
+        is_consumable: true,
+        cost_per_unit: 8.00
+      },
+      {
+        name: "Limit social media",
+        description: "Reduce mindless scrolling",
+        icon: "📱",
+        unit: "hours",
+        target_frequency: 2,
+        frequency_period: "daily",
+        color: "#06b6d4"
+      },
+      {
+        name: "Stop junk food",
+        description: "Avoid unhealthy snacks",
+        icon: "🍔",
+        unit: "times",
+        target_frequency: 1,
+        frequency_period: "daily",
+        color: "#ef4444",
+        is_consumable: true,
+        cost_per_unit: 12.00
+      },
+      {
+        name: "Reduce coffee intake",
+        description: "Limit caffeine consumption",
+        icon: "☕",
+        unit: "cups",
+        target_frequency: 2,
+        frequency_period: "daily",
+        color: "#92400e",
+        is_consumable: true,
+        cost_per_unit: 4.50
+      },
+      {
+        name: "Stop impulse shopping",
+        description: "Avoid unnecessary purchases",
+        icon: "🛒",
+        unit: "purchases",
+        target_frequency: 1,
+        frequency_period: "weekly",
+        color: "#ec4899",
+        is_consumable: true,
+        cost_per_unit: 50.00
+      }
+    ]
+  };
 
   const commonIcons = {
-    healthy: ['💪', '🏃‍♂️', '📖', '🧘‍♀️', '💧', '🥗', '😴', '🚶‍♀️', '🏋️‍♂️', '🧠', '🎯'],
+    healthy: ['💪', '🏃‍♂️', '📖', '🧘‍♀️', '💧', '🥗', '😴', '🚶‍♀️', '🏋️‍♂️', '🧠', '🎯', '🎵'],
     unhealthy: ['🚬', '🍺', '🍔', '📱', '🎮', '☕', '🍰', '🛋️', '📺', '🛒', '💸']
   };
 
@@ -105,11 +230,12 @@ const AddHabitModal = ({ isOpen, onClose, onAddHabit }) => {
       target_frequency: 1,
       frequency_period: 'daily',
       cost_per_unit: '',
-      icon: '📋',
+      icon: '',
       color: '#6366f1'
     });
     setErrors({});
     setShowDescription(false);
+    setShowTemplates(true);
   };
 
   const handleOutsideClick = (e) => {
@@ -118,14 +244,81 @@ const AddHabitModal = ({ isOpen, onClose, onAddHabit }) => {
     }
   };
 
+  const transitionToCustom = () => {
+    setIsTransitioning(true);
+    setTimeout(() => {
+      setShowTemplates(false);
+      // Reset form when switching to custom mode
+      setFormData({
+        name: '',
+        description: '',
+        category: 'healthy',
+        is_consumable: false,
+        unit: 'times',
+        target_frequency: 1,
+        frequency_period: 'daily',
+        cost_per_unit: '',
+        icon: '',
+        color: '#6366f1'
+      });
+      setShowDescription(false);
+      setTimeout(() => setIsTransitioning(false), 100);
+    }, 250);
+  };
+
+  const transitionToTemplates = () => {
+    setIsTransitioning(true);
+    setTimeout(() => {
+      setShowTemplates(true);
+      // Reset form when going back to templates
+      setFormData({
+        name: '',
+        description: '',
+        category: 'healthy',
+        is_consumable: false,
+        unit: 'times',
+        target_frequency: 1,
+        frequency_period: 'daily',
+        cost_per_unit: '',
+        icon: '',
+        color: '#6366f1'
+      });
+      setShowDescription(false);
+      setTimeout(() => setIsTransitioning(false), 100);
+    }, 250);
+  };
+
+  const useTemplate = (template) => {
+    setIsTransitioning(true);
+    setTimeout(() => {
+      setFormData({
+        ...formData,
+        name: template.name,
+        description: template.description || '',
+        icon: template.icon,
+        unit: template.unit,
+        target_frequency: template.target_frequency,
+        frequency_period: template.frequency_period,
+        color: template.color,
+        is_consumable: template.is_consumable || false,
+        cost_per_unit: template.cost_per_unit || ''
+      });
+      setShowTemplates(false);
+      if (template.description) {
+        setShowDescription(true);
+      }
+      setTimeout(() => setIsTransitioning(false), 100);
+    }, 250);
+  };
+
   if (!isOpen) return null;
 
   return (
     <div 
-      className="fixed inset-0 bg-gray-900/50 backdrop-blur-sm overflow-y-auto h-full w-full flex justify-center items-center z-50" 
+      className="fixed inset-0 bg-gray-900/50 backdrop-blur-sm overflow-y-auto h-full w-full flex justify-center items-center z-50 animate-in fade-in duration-300" 
       onClick={handleOutsideClick}
     >
-      <div className="bg-white dark:bg-gray-900 rounded-2xl shadow-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto border border-gray-200 dark:border-gray-700">
+      <div className="bg-white dark:bg-gray-900 rounded-2xl shadow-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto border border-gray-200 dark:border-gray-700 animate-in zoom-in duration-300 ease-out">
         <div className="flex justify-between items-center p-6 border-b border-gray-200 dark:border-gray-700">
           <h2 className="text-2xl font-bold text-gray-900 dark:text-gray-100">Add New Habit</h2>
           <button 
@@ -136,7 +329,121 @@ const AddHabitModal = ({ isOpen, onClose, onAddHabit }) => {
           </button>
         </div>
 
-        <form onSubmit={handleSubmit} className="p-6 space-y-6">
+        {/* Content Container with Transitions */}
+        <div className="relative overflow-hidden">
+          {/* Templates Section */}
+          <div className={`transition-all duration-500 ${
+            showTemplates 
+              ? 'transform translate-x-0 opacity-100 scale-100' 
+              : 'transform -translate-x-full opacity-0 scale-95 absolute inset-0 pointer-events-none'
+          }`}>
+            <div className="p-6 border-b border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800/50">
+            <div className="flex items-center justify-between mb-4">
+              <div className="flex items-center space-x-2">
+                <Zap className="w-5 h-5 text-indigo-500" />
+                <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100">Quick Start Templates</h3>
+              </div>
+              <button
+                type="button"
+                onClick={transitionToCustom}
+                disabled={isTransitioning}
+                className="text-sm text-indigo-600 hover:text-indigo-700 dark:text-indigo-400 dark:hover:text-indigo-300 transition-colors disabled:opacity-50"
+              >
+                Or create custom
+              </button>
+            </div>
+            
+            <div className="space-y-4">
+              <div>
+                <h4 className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-2 flex items-center">
+                  <Smile className="w-4 h-4 mr-1 text-green-500" />
+                  Healthy Habits
+                </h4>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+                  {habitTemplates.healthy.map((template, index) => (
+                    <button
+                      key={index}
+                      type="button"
+                      onClick={() => useTemplate(template)}
+                      disabled={isTransitioning}
+                      className="flex items-center space-x-3 p-3 text-left bg-white dark:bg-gray-700 rounded-lg border border-gray-200 dark:border-gray-600 hover:border-indigo-300 dark:hover:border-indigo-500 hover:shadow-sm transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                      <span className="text-2xl">{template.icon}</span>
+                      <div className="flex-1 min-w-0">
+                        <div className="text-sm font-medium text-gray-900 dark:text-gray-100 truncate">
+                          {template.name}
+                        </div>
+                        <div className="text-xs text-gray-500 dark:text-gray-400 truncate">
+                          {template.target_frequency} {template.unit} per {template.frequency_period.replace('ly', '')}
+                        </div>
+                      </div>
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              <div>
+                <h4 className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-2 flex items-center">
+                  <AlertTriangle className="w-4 h-4 mr-1 text-red-500" />
+                  Vices to Quit
+                </h4>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+                  {habitTemplates.unhealthy.map((template, index) => (
+                    <button
+                      key={index}
+                      type="button"
+                      onClick={() => useTemplate(template)}
+                      disabled={isTransitioning}
+                      className="flex items-center space-x-3 p-3 text-left bg-white dark:bg-gray-700 rounded-lg border border-gray-200 dark:border-gray-600 hover:border-indigo-300 dark:hover:border-indigo-500 hover:shadow-sm transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                      <span className="text-2xl">{template.icon}</span>
+                      <div className="flex-1 min-w-0">
+                        <div className="text-sm font-medium text-gray-900 dark:text-gray-100 truncate">
+                          {template.name}
+                        </div>
+                        <div className="text-xs text-gray-500 dark:text-gray-400 truncate">
+                          {template.cost_per_unit ? `$${template.cost_per_unit.toFixed(2)} saved per success` : `Limit to ${template.target_frequency} ${template.unit}`}
+                        </div>
+                      </div>
+                    </button>
+                  ))}
+                </div>
+              </div>
+              
+              <div className="flex justify-center pt-4 border-t border-gray-200 dark:border-gray-600">
+                <button
+                  type="button"
+                  onClick={() => setShowTemplates(false)}
+                  className="px-4 py-2 text-sm font-medium text-indigo-600 dark:text-indigo-400 hover:text-indigo-700 dark:hover:text-indigo-300 border border-indigo-300 dark:border-indigo-600 rounded-lg hover:bg-indigo-50 dark:hover:bg-indigo-900/20 transition-colors"
+                >
+                  Create Custom Habit
+                </button>
+              </div>
+            </div>
+            </div>
+          </div>
+
+          {/* Custom Form Section */}
+          <div className={`transition-all duration-500 ${
+            !showTemplates 
+              ? 'transform translate-x-0 opacity-100 scale-100' 
+              : 'transform translate-x-full opacity-0 scale-95 absolute inset-0 pointer-events-none'
+          }`}>
+          <div>
+            {/* Back to Templates Button */}
+            <div className="p-4 border-b border-gray-200 dark:border-gray-700">
+              <button
+                type="button"
+                onClick={transitionToTemplates}
+                disabled={isTransitioning}
+                className="text-sm text-indigo-600 hover:text-indigo-700 dark:text-indigo-400 dark:hover:text-indigo-300 flex items-center space-x-1 transition-colors disabled:opacity-50"
+              >
+                <span>←</span>
+                <span>Back to Templates</span>
+              </button>
+            </div>
+            
+            <form onSubmit={handleSubmit} className="p-6 space-y-6">
           {/* Basic Information */}
           <div className="space-y-4">
             <div>
@@ -190,11 +497,11 @@ const AddHabitModal = ({ isOpen, onClose, onAddHabit }) => {
             <label className="block text-sm font-semibold text-gray-900 dark:text-gray-100 mb-3">
               Habit Type
             </label>
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-2 gap-4 relative overflow-hidden">
               <button
                 type="button"
                 onClick={() => setFormData(prev => ({ ...prev, category: 'healthy' }))}
-                className={`p-4 rounded-2xl border-2 transition-all duration-200 flex flex-col items-center space-y-2 ${
+                className={`p-4 rounded-2xl border-2 transition-all duration-300 flex flex-col items-center space-y-2 ${
                   formData.category === 'healthy'
                     ? 'border-indigo-500 bg-indigo-50 dark:bg-indigo-950/50 text-indigo-700 dark:text-indigo-300'
                     : 'border-gray-200 dark:border-gray-700 hover:border-indigo-300 dark:hover:border-indigo-600'
@@ -210,7 +517,7 @@ const AddHabitModal = ({ isOpen, onClose, onAddHabit }) => {
               <button
                 type="button"
                 onClick={() => setFormData(prev => ({ ...prev, category: 'unhealthy' }))}
-                className={`p-4 rounded-2xl border-2 transition-all duration-200 flex flex-col items-center space-y-2 ${
+                className={`p-4 rounded-2xl border-2 transition-all duration-300 flex flex-col items-center space-y-2 ${
                   formData.category === 'unhealthy'
                     ? 'border-indigo-500 bg-indigo-50 dark:bg-indigo-950/50 text-indigo-700 dark:text-indigo-300'
                     : 'border-gray-200 dark:border-gray-700 hover:border-indigo-300 dark:hover:border-indigo-600'
@@ -283,24 +590,63 @@ const AddHabitModal = ({ isOpen, onClose, onAddHabit }) => {
           {/* Icon Selection */}
           <div>
             <label className="block text-sm font-semibold text-gray-900 dark:text-gray-100 mb-3">
-              Choose Icon
+              Choose Icon (Optional)
             </label>
-            <div className="grid grid-cols-12 gap-3">
-              {commonIcons[formData.category].map((icon, index) => (
-                <button
-                  key={index}
-                  type="button"
-                  onClick={() => setFormData(prev => ({ ...prev, icon }))}
-                  className={`w-12 h-12 text-2xl rounded-xl border-2 transition-all duration-200 hover:scale-105 ${
-                    formData.icon === icon 
-                      ? 'border-indigo-500 bg-indigo-50 dark:bg-indigo-950/50 scale-105' 
-                      : 'border-gray-200 dark:border-gray-700 hover:border-indigo-300 dark:hover:border-indigo-600'
-                  }`}
-                >
-                  {icon}
-                </button>
-              ))}
+            <div className="relative overflow-hidden">
+              <div className={`grid grid-cols-12 gap-3 transition-all duration-300 ${
+                formData.category === 'healthy' 
+                  ? 'opacity-100 transform translate-x-0' 
+                  : 'opacity-0 transform -translate-x-full absolute inset-0 pointer-events-none'
+              }`}>
+                {commonIcons.healthy.map((icon, index) => (
+                  <button
+                    key={index}
+                    type="button"
+                    onClick={() => setFormData(prev => ({ 
+                      ...prev, 
+                      icon: prev.icon === icon ? '' : icon 
+                    }))}
+                    className={`w-11 h-11 text-xl rounded-xl border-2 transition-all duration-200 hover:scale-105 ${
+                      formData.icon === icon 
+                        ? 'border-indigo-500 bg-indigo-50 dark:bg-indigo-950/50 scale-105' 
+                        : 'border-gray-200 dark:border-gray-700 hover:border-indigo-300 dark:hover:border-indigo-600'
+                    }`}
+                  >
+                    {icon}
+                  </button>
+                ))}
+              </div>
+              <div className={`grid grid-cols-12 gap-3 transition-all duration-300 ${
+                formData.category === 'unhealthy' 
+                  ? 'opacity-100 transform translate-x-0' 
+                  : 'opacity-0 transform translate-x-full absolute inset-0 pointer-events-none'
+              }`}>
+                {commonIcons.unhealthy.map((icon, index) => (
+                  <button
+                    key={index}
+                    type="button"
+                    onClick={() => setFormData(prev => ({ 
+                      ...prev, 
+                      icon: prev.icon === icon ? '' : icon 
+                    }))}
+                    className={`w-11 h-11 text-xl rounded-xl border-2 transition-all duration-200 hover:scale-105 ${
+                      formData.icon === icon 
+                        ? 'border-indigo-500 bg-indigo-50 dark:bg-indigo-950/50 scale-105' 
+                        : 'border-gray-200 dark:border-gray-700 hover:border-indigo-300 dark:hover:border-indigo-600'
+                    }`}
+                  >
+                    {icon}
+                  </button>
+                ))}
+              </div>
             </div>
+            {formData.icon && (
+              <div className="mt-3 text-center">
+                <p className="text-xs text-gray-500 dark:text-gray-400">
+                  Click the selected icon again to deselect
+                </p>
+              </div>
+            )}
           </div>
 
           {/* Color Selection */}
@@ -383,7 +729,10 @@ const AddHabitModal = ({ isOpen, onClose, onAddHabit }) => {
               Add Habit
             </button>
           </div>
-        </form>
+            </form>
+          </div>
+          </div>
+        </div>
       </div>
     </div>
   );

@@ -6,9 +6,9 @@ import HabitsOverview from '../partials/habits/HabitsOverview';
 import HabitsGrid from '../partials/habits/HabitsGrid';
 import AddHabitModal from '../partials/habits/AddHabitModal';
 import HabitDetailModal from '../partials/habits/HabitDetailModal';
-import { Plus, TrendingUp, TrendingDown } from 'lucide-react';
+import { Plus, TrendingUp, TrendingDown, Download } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
-import { getTodayLocal } from '../utils/Utils';
+import { getTodayLocal, exportHabitsToCSV } from '../utils/Utils';
 
 function Habits() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
@@ -136,7 +136,7 @@ function Habits() {
           ...habitData, 
           user_id: user.id,
           position: maxPosition + 1
-        }])  // ✅ Add user_id and position
+        }])
         .select();
 
       if (error) throw error;
@@ -422,6 +422,20 @@ function Habits() {
     );
   }
 
+  const handleExportCSV = () => {
+    if (habits.length === 0) {
+      alert('No habits to export');
+      return;
+    }
+    
+    try {
+      exportHabitsToCSV(habits, habitLogs);
+    } catch (error) {
+      console.error('Error exporting CSV:', error);
+      alert('Failed to export data. Please try again.');
+    }
+  };
+
   const filteredHabits = habits.filter(habit => {
     if (viewMode === 'all') return true;
     return habit.category === viewMode;
@@ -487,13 +501,24 @@ function Habits() {
                     {filteredHabits.length} of {habits.length} {habits.length === 1 ? 'habit' : 'habits'}
                   </p>
                 </div>
-                <button
-                  onClick={() => setIsAddModalOpen(true)}
-                  className="btn bg-indigo-500 hover:bg-indigo-600 text-white shadow-lg hover:shadow-xl transition-all duration-200 transform hover:scale-105"
-                >
-                  <Plus className="w-4 h-4 mr-2" />
-                  <span>Add Habit</span>
-                </button>
+                <div className="flex space-x-3">
+                  <button
+                    onClick={handleExportCSV}
+                    disabled={habits.length === 0}
+                    className="btn bg-gray-500 hover:bg-gray-600 text-white shadow-lg hover:shadow-xl transition-all duration-200 transform hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none"
+                    title="Export habits data to CSV"
+                  >
+                    <Download className="w-4 h-4 mr-2" />
+                    <span>Export</span>
+                  </button>
+                  <button
+                    onClick={() => setIsAddModalOpen(true)}
+                    className="btn bg-indigo-500 hover:bg-indigo-600 text-white shadow-lg hover:shadow-xl transition-all duration-200 transform hover:scale-105"
+                  >
+                    <Plus className="w-4 h-4 mr-2" />
+                    <span>Add Habit</span>
+                  </button>
+                </div>
               </div>
 
               {/* View Mode Filter */}

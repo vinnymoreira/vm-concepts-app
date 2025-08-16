@@ -232,7 +232,7 @@ const DashboardCardHabits = () => {
                     .slice(0, 2)
                     .map((habit) => (
                       <div key={habit.id} className="flex items-center space-x-3 py-2">
-                        <span className="text-lg">{habit.icon || (habit.category === 'healthy' ? '❤️' : '⚠️')}</span>
+                        {habit.icon && <span className="text-lg">{habit.icon}</span>}
                         <div>
                           <div className="text-sm font-medium text-gray-800 dark:text-gray-100">
                             {habit.name}

@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Plus, Minus, DollarSign, Calendar, TrendingUp, TrendingDown } from 'lucide-react';
-import { getTodayLocal, calculateStreak } from '../../utils/Utils';
+import { getTodayLocal, calculateStreak, celebrateHabitComplete } from '../../utils/Utils';
 
 const HabitCard = ({ habit, habitLogs = [], onLogHabit, onDeleteLog, onHabitClick }) => {
   const [isLogging, setIsLogging] = useState(false);
@@ -50,6 +50,8 @@ const HabitCard = ({ habit, habitLogs = [], onLogHabit, onDeleteLog, onHabitClic
       // For healthy habits, normal logging
       onLogHabit(habit.id, 1, habit.is_consumable ? habit.cost_per_unit : null, 'completed');
     }
+    // Celebrate the completion!
+    celebrateHabitComplete(habit.category);
   };
 
   const handleRemoveLog = () => {
@@ -63,6 +65,8 @@ const HabitCard = ({ habit, habitLogs = [], onLogHabit, onDeleteLog, onHabitClic
     setIsLogging(false);
     setLogQuantity(1);
     setLogCost('');
+    // Celebrate the completion!
+    celebrateHabitComplete(habit.category);
   };
 
   const handleSlippedLog = () => {
@@ -132,11 +136,13 @@ const HabitCard = ({ habit, habitLogs = [], onLogHabit, onDeleteLog, onHabitClic
         {/* Header */}
         <div className="flex items-start gap-4 mb-4">
           <div className="flex items-center gap-3 flex-1 min-w-0">
-            <div className="relative">
-              <div className={`w-12 h-12 rounded-lg ${categoryIconBg} flex items-center justify-center text-gray-600 dark:text-gray-400 font-bold text-lg shadow-md`}>
-                {habit.icon || (habit.category === 'healthy' ? '💚' : '⚠️')}
+            {habit.icon && (
+              <div className="relative">
+                <div className={`w-12 h-12 rounded-lg ${categoryIconBg} flex items-center justify-center text-gray-600 dark:text-gray-400 font-bold text-lg shadow-md`}>
+                  {habit.icon}
+                </div>
               </div>
-            </div>
+            )}
             <div className="flex-1 min-w-0">
               <h3 className="text-lg font-semibold mb-1 text-gray-900 dark:text-white group-hover:text-indigo-600 dark:group-hover:text-indigo-400 transition-colors duration-200 truncate">
                 {habit.name}
