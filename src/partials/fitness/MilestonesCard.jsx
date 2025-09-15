@@ -4,9 +4,9 @@ import { Target } from 'lucide-react';
 const MilestonesCard = ({ goal, weightLogs, milestones }) => {
   const calculateMilestones = () => {
     // If we have custom milestones from the database, use those
-    if (milestones && milestones.length > 0 && weightLogs.length > 0) {
-      const currentWeight = weightLogs[0].weight;
-      const startingWeight = goal.starting_weight || weightLogs[weightLogs.length - 1].weight;
+    if (milestones && milestones.length > 0) {
+      const currentWeight = weightLogs.length > 0 ? weightLogs[0].weight : goal.starting_weight;
+      const startingWeight = goal.starting_weight || (weightLogs.length > 0 ? weightLogs[weightLogs.length - 1].weight : goal.starting_weight);
       
       return milestones.map((milestone, index) => {
         const isCompleted = currentWeight <= milestone.target_weight;
@@ -46,11 +46,11 @@ const MilestonesCard = ({ goal, weightLogs, milestones }) => {
     }
     
     // Fallback to auto-calculated milestones if no custom ones exist
-    if (!goal || weightLogs.length === 0) return null;
+    if (!goal) return null;
     
-    const startingWeight = goal.starting_weight || weightLogs[weightLogs.length - 1].weight;
+    const startingWeight = goal.starting_weight || (weightLogs.length > 0 ? weightLogs[weightLogs.length - 1].weight : goal.starting_weight);
     const targetWeight = goal.target_weight;
-    const currentWeight = weightLogs[0].weight;
+    const currentWeight = weightLogs.length > 0 ? weightLogs[0].weight : goal.starting_weight;
     const totalDifference = startingWeight - targetWeight;
     const milestoneCount = 4;
     const milestoneSize = totalDifference / milestoneCount;
@@ -99,14 +99,14 @@ const MilestonesCard = ({ goal, weightLogs, milestones }) => {
       <h2 className="text-xl font-semibold mb-6 text-gray-800 dark:text-gray-100">
         Milestones
       </h2>
-      {goal && weightLogs.length > 0 ? (
+      {goal ? (
         <div className="space-y-4">
           {/* Top Row - Starting Weight, Target Weight, Weight Loss */}
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 pb-4 border-b border-gray-200 dark:border-gray-700">
             <div className="text-center">
               <span className="block text-sm text-gray-600 dark:text-gray-400">Starting Weight</span>
               <span className="block text-lg font-semibold text-blue-600 dark:text-blue-400">
-                {goal.starting_weight || weightLogs[weightLogs.length - 1].weight} lbs
+                {goal.starting_weight || (weightLogs.length > 0 ? weightLogs[weightLogs.length - 1].weight : 'N/A')} lbs
               </span>
             </div>
             <div className="text-center">
@@ -118,7 +118,10 @@ const MilestonesCard = ({ goal, weightLogs, milestones }) => {
             <div className="text-center">
               <span className="block text-sm text-gray-600 dark:text-gray-400">Weight Loss</span>
               <span className="block text-lg font-semibold text-green-600 dark:text-green-400">
-                {((goal.starting_weight || weightLogs[weightLogs.length - 1].weight) - weightLogs[0].weight).toFixed(1)} lbs
+                {weightLogs.length > 0 
+                  ? ((goal.starting_weight || weightLogs[weightLogs.length - 1].weight) - weightLogs[0].weight).toFixed(1)
+                  : '0.0'
+                } lbs
               </span>
             </div>
           </div>
@@ -176,7 +179,7 @@ const MilestonesCard = ({ goal, weightLogs, milestones }) => {
           <div className="w-16 h-16 bg-gray-100 dark:bg-gray-700 rounded-full flex items-center justify-center mx-auto mb-4">
             <Target className="w-8 h-8 text-gray-400" />
           </div>
-          <p className="text-gray-600 dark:text-gray-400">Set a goal and log weights to see milestones</p>
+          <p className="text-gray-600 dark:text-gray-400">Create a goal to see milestones</p>
         </div>
       )}
     </div>

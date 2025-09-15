@@ -8,42 +8,70 @@ const getTodayDateString = () => {
   return localDate.toISOString().split('T')[0];
 };
 
-// Add these props to the EditGoalModal component:
+// Enhanced EditGoalModal component with multi-goal support:
 const EditGoalModal = ({ 
   isOpen, 
   onClose, 
-  targetWeight, 
+  targetWeight: initialTargetWeight, 
   setTargetWeight, 
-  deadline, 
+  deadline: initialDeadline, 
   setDeadline, 
   onSave, 
-  onDelete, // ✅ Add this new prop
+  onDelete,
   goal, 
   weightLogs, 
-  existingMilestones 
+  existingMilestones,
+  isNewGoal = false
 }) => {
   const [startingWeight, setStartingWeight] = useState('');
   const [startingDate, setStartingDate] = useState('');
   const [enableMilestones, setEnableMilestones] = useState(false);
   const [milestoneCount, setMilestoneCount] = useState(4);
   const [customMilestones, setCustomMilestones] = useState([]);
+  const [goalName, setGoalName] = useState('');
+  const [goalStatus, setGoalStatus] = useState('active');
+  const [targetWeight, setTargetWeightLocal] = useState('');
+  const [deadline, setDeadlineLocal] = useState('');
 
   useEffect(() => {
     if (isOpen) {
-      // Set starting weight and date from goal or earliest log entry
-      if (goal && goal.starting_weight && goal.starting_date) {
-        setStartingWeight(goal.starting_weight.toString());
-        setStartingDate(goal.starting_date);
-        setEnableMilestones(goal.enable_milestones || false);
-      } else if (weightLogs && weightLogs.length > 0) {
-        const sortedLogs = [...weightLogs].sort((a, b) => new Date(a.log_date) - new Date(b.log_date));
-        const firstLog = sortedLogs[0];
-        setStartingWeight(firstLog.weight.toString());
-        setStartingDate(firstLog.log_date);
-        setEnableMilestones(false);
-      } else {
+      if (isNewGoal) {
+        // Reset for new goal
+        setGoalName('');
+        setGoalStatus('active');
         setStartingWeight('');
         setStartingDate(getTodayDateString());
+        setTargetWeightLocal(initialTargetWeight || '');
+        setDeadlineLocal(initialDeadline || '');
+        setEnableMilestones(false);
+      } else if (goal && goal.starting_weight && goal.starting_date) {
+        // Editing existing goal
+        setGoalName(goal.name || '');
+        setGoalStatus(goal.status || 'active');
+        setStartingWeight(goal.starting_weight.toString());
+        setStartingDate(goal.starting_date);
+        setTargetWeightLocal(goal.target_weight?.toString() || initialTargetWeight || '');
+        setDeadlineLocal(goal.deadline || initialDeadline || '');
+        setEnableMilestones(goal.enable_milestones || false);
+      } else if (weightLogs && weightLogs.length > 0) {
+        // Fallback to earliest log
+        const sortedLogs = [...weightLogs].sort((a, b) => new Date(a.log_date) - new Date(b.log_date));
+        const firstLog = sortedLogs[0];
+        setGoalName('');
+        setGoalStatus('active');
+        setStartingWeight(firstLog.weight.toString());
+        setStartingDate(firstLog.log_date);
+        setTargetWeightLocal(initialTargetWeight || '');
+        setDeadlineLocal(initialDeadline || '');
+        setEnableMilestones(false);
+      } else {
+        // Default values
+        setGoalName('');
+        setGoalStatus('active');
+        setStartingWeight('');
+        setStartingDate(getTodayDateString());
+        setTargetWeightLocal(initialTargetWeight || '');
+        setDeadlineLocal(initialDeadline || '');
         setEnableMilestones(false);
       }
       
@@ -129,8 +157,10 @@ const EditGoalModal = ({
     
     // Pass all the data to the save function
     const goalData = {
-      targetWeight,
-      deadline,
+      name: goalName || (isNewGoal ? 'My Fitness Goal' : goal?.name),
+      status: goalStatus,
+      targetWeight: targetWeight,
+      deadline: deadline,
       startingWeight: parseFloat(startingWeight),
       startingDate,
       enableMilestones,
@@ -145,7 +175,7 @@ const EditGoalModal = ({
       <div className="bg-white dark:bg-gray-800 rounded-lg w-full max-w-2xl max-h-[90vh] overflow-y-auto">
         <div className="flex items-center justify-between p-6 border-b border-gray-200 dark:border-gray-700">
           <h2 className="text-xl font-semibold text-gray-800 dark:text-gray-100">
-            {goal ? 'Edit Fitness Goal' : 'Set Fitness Goal'}
+            {isNewGoal ? 'Create New Fitness Goal' : goal ? 'Edit Fitness Goal' : 'Set Fitness Goal'}
           </h2>
           <button 
             onClick={onClose}
@@ -157,6 +187,38 @@ const EditGoalModal = ({
         
         <form onSubmit={handleSubmit} className="p-6">
           <div className="space-y-6">
+            {/* Goal Name and Status */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <label className="block text-sm font-medium mb-2 text-gray-700 dark:text-gray-300">
+                  Goal Name
+                </label>
+                <input
+                  type="text"
+                  className="form-input w-full"
+                  value={goalName}
+                  onChange={(e) => setGoalName(e.target.value)}
+                  placeholder="My Fitness Goal"
+                  required
+                />
+              </div>
+              {!isNewGoal && (
+                <div>
+                  <label className="block text-sm font-medium mb-2 text-gray-700 dark:text-gray-300">
+                    Status
+                  </label>
+                  <select
+                    className="form-select w-full"
+                    value={goalStatus}
+                    onChange={(e) => setGoalStatus(e.target.value)}
+                  >
+                    <option value="active">Active</option>
+                    <option value="completed">Completed</option>
+                    <option value="archived">Archived</option>
+                  </select>
+                </div>
+              )}
+            </div>
             {/* Starting Weight and Date */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
@@ -197,7 +259,7 @@ const EditGoalModal = ({
                   step="0.1"
                   className="form-input w-full"
                   value={targetWeight}
-                  onChange={(e) => setTargetWeight(e.target.value)}
+                  onChange={(e) => setTargetWeightLocal(e.target.value)}
                   required
                 />
               </div>
@@ -209,7 +271,7 @@ const EditGoalModal = ({
                   type="date"
                   className="form-input w-full"
                   value={deadline}
-                  onChange={(e) => setDeadline(e.target.value)}
+                  onChange={(e) => setDeadlineLocal(e.target.value)}
                   required
                 />
               </div>
@@ -296,7 +358,7 @@ const EditGoalModal = ({
           </div>
           
           <div className="flex justify-between items-center mt-8">
-            {goal && (
+            {goal && !isNewGoal && (
               <button
                 type="button"
                 onClick={() => {
@@ -324,7 +386,7 @@ const EditGoalModal = ({
                 type="submit"
                 className="btn bg-indigo-500 hover:bg-indigo-600 text-white"
               >
-                {goal ? 'Update Goal' : 'Set Goal'}
+                {isNewGoal ? 'Create Goal' : goal ? 'Update Goal' : 'Set Goal'}
               </button>
             </div>
           </div>

@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
-import { Plus, Edit3 } from 'lucide-react';
+import { Plus, Edit3, Target, Archive, TrendingUp } from 'lucide-react';
 import { supabase } from '../supabaseClient';
 import { useAuth } from '../context/AuthContext';
+import { migrateFitnessData, checkMigrationStatus } from '../utils/fitnessMigration';
 
 import Sidebar from '../partials/Sidebar';
 import Header from '../partials/Header';
@@ -11,15 +12,18 @@ import MilestonesCard from '../partials/fitness/MilestonesCard';
 import ProgressHistoryCard from '../partials/fitness/ProgressHistoryCard';
 import LogWeightModal from '../partials/fitness/LogWeightModal';
 import EditGoalModal from '../partials/fitness/EditGoalModal';
+import GoalComparison from '../partials/fitness/GoalComparison';
 
 function Fitness() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
-  const [goal, setGoal] = useState(null);
+  const [goals, setGoals] = useState([]);
+  const [activeGoal, setActiveGoal] = useState(null);
   const [weightLogs, setWeightLogs] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [isLogModalOpen, setIsLogModalOpen] = useState(false);
   const [isEditGoalModalOpen, setIsEditGoalModalOpen] = useState(false);
+  const [isNewGoalModalOpen, setIsNewGoalModalOpen] = useState(false);
   const [currentWeight, setCurrentWeight] = useState('');
   const [logDate, setLogDate] = useState(new Date().toISOString().split('T')[0]);
   const [targetWeight, setTargetWeight] = useState('');
@@ -29,11 +33,14 @@ function Fitness() {
   const [editDate, setEditDate] = useState('');
   const [timeDisplayMode, setTimeDisplayMode] = useState('days');
   const [milestones, setMilestones] = useState([]);
+  const [migrationStatus, setMigrationStatus] = useState(null);
+  const [showGoalSelector, setShowGoalSelector] = useState(false);
+  const [showGoalComparison, setShowGoalComparison] = useState(false);
 
   // ✅ Get user and initialized from useAuth
   const { user, initialized } = useAuth();
 
-  // ✅ Fixed useEffect with proper dependencies and cleanup
+  // Enhanced useEffect for multi-goal support with migration
   useEffect(() => {
     let isMounted = true;
 
@@ -51,41 +58,58 @@ function Fitness() {
           setError(null);
         }
         
-        // Fetch goal
-        const { data: goalData } = await supabase
+        // Check migration status and migrate if needed
+        const migrationCheck = await checkMigrationStatus(user.id);
+        if (migrationCheck.migrationNeeded) {
+          console.log('Migration needed, starting migration...');
+          await migrateFitnessData(user.id);
+        }
+        
+        // Fetch all goals
+        const { data: goalsData } = await supabase
           .from('fitness_goals')
           .select('*')
-          .eq('user_id', user.id)  // ✅ Filter by user
-          .single();
+          .eq('user_id', user.id)
+          .order('created_at', { ascending: false });
         
         if (isMounted) {
-          setGoal(goalData);
-          if (goalData) {
-            setTargetWeight(goalData.target_weight);
-            setDeadline(goalData.deadline);
+          setGoals(goalsData || []);
+          
+          // Set active goal (first active goal or first goal)
+          const activeGoalData = goalsData?.find(g => g.status === 'active') || goalsData?.[0];
+          setActiveGoal(activeGoalData);
+          
+          if (activeGoalData) {
+            setTargetWeight(activeGoalData.target_weight);
+            setDeadline(activeGoalData.deadline);
             
-            // Fetch milestones if they exist
-            if (goalData.enable_milestones) {
+            // Fetch milestones for active goal
+            if (activeGoalData.enable_milestones) {
               const { data: milestonesData } = await supabase
                 .from('fitness_milestones')
                 .select('*')
-                .eq('goal_id', goalData.id)
+                .eq('goal_id', activeGoalData.id)
                 .order('milestone_number');
               
               setMilestones(milestonesData || []);
+            } else {
+              setMilestones([]);
             }
+            
+            // Fetch weight logs for active goal
+            const { data: logsData } = await supabase
+              .from('weight_logs')
+              .select('*')
+              .eq('user_id', user.id)
+              .eq('goal_id', activeGoalData.id)
+              .order('log_date', { ascending: false });
+            
+            setWeightLogs(logsData || []);
+          } else {
+            // No goals, clear data
+            setMilestones([]);
+            setWeightLogs([]);
           }
-        }
-
-        // Fetch weight logs
-        const { data: logsData } = await supabase
-          .from('weight_logs')
-          .select('*')
-          .eq('user_id', user.id)  // ✅ Filter by user
-          .order('log_date', { ascending: false });
-        
-        if (isMounted) {
-          setWeightLogs(logsData || []);
         }
       } catch (error) {
         console.error('Error fetching fitness data:', error);
@@ -106,7 +130,7 @@ function Fitness() {
     };
   }, [user, initialized]);
 
-  const handleSetGoal = async (goalData) => {
+  const handleSetGoal = async (goalData, isNewGoal = false) => {
     try {
       const { data: { user } } = await supabase.auth.getUser();
       
@@ -122,50 +146,57 @@ function Fitness() {
         target_weight: parseFloat(goalData.targetWeight),
         deadline: goalData.deadline,
         starting_weight: parseFloat(goalData.startingWeight),
-        starting_date: goalData.startingDate
+        starting_date: goalData.startingDate,
+        name: goalData.name || 'My Fitness Goal',
+        status: goalData.status || 'active'
       };
 
       // Explicitly set the boolean value for enable_milestones
-      // This ensures no automatic camelCase conversion issues
       dbGoalData['enable_milestones'] = Boolean(goalData.enableMilestones);
       
-      if (goal) {
+      if (activeGoal && !isNewGoal) {
         // Update existing goal
         const updateData = {
           ...dbGoalData,
           updated_at: new Date().toISOString()
         };
         
-        
         const { error } = await supabase
           .from('fitness_goals')
           .update(updateData)
-          .eq('id', goal.id);
+          .eq('id', activeGoal.id);
         
         if (error) {
           console.error('Update error:', error);
           throw error;
         }
         
-        goalId = goal.id;
+        goalId = activeGoal.id;
         
         // Delete existing milestones
         const { error: deleteError } = await supabase
           .from('fitness_milestones')
           .delete()
-          .eq('goal_id', goal.id);
+          .eq('goal_id', activeGoal.id);
           
         if (deleteError) {
           console.error('Delete milestones error:', deleteError);
-          // Don't throw here, just log
         }
           
       } else {
         // Create new goal
+        // If creating new goal, deactivate others if this is set as active
+        if (dbGoalData.status === 'active') {
+          await supabase
+            .from('fitness_goals')
+            .update({ status: 'archived' })
+            .eq('user_id', user.id)
+            .eq('status', 'active');
+        }
         
         const { data: newGoal, error } = await supabase
           .from('fitness_goals')
-          .insert([dbGoalData]) // Wrap in array to be explicit
+          .insert([dbGoalData])
           .select()
           .single();
         
@@ -189,7 +220,6 @@ function Fitness() {
           target_weight: parseFloat(milestone.weight)
         }));
         
-        
         const { error: milestonesError } = await supabase
           .from('fitness_milestones')
           .insert(milestonesToSave);
@@ -200,49 +230,12 @@ function Fitness() {
         }
       }
       
-      // Close modal and refresh data
+      // Close modals and refresh data
       setIsEditGoalModalOpen(false);
+      setIsNewGoalModalOpen(false);
       
-      // Manually refresh the data instead of calling fetchFitnessData
-      try {
-        const { data: { user } } = await supabase.auth.getUser();
-        
-        // Fetch updated goal
-        const { data: goalData } = await supabase
-          .from('fitness_goals')
-          .select('*')
-          .eq('user_id', user.id)
-          .single();
-        
-        setGoal(goalData);
-        if (goalData) {
-          setTargetWeight(goalData.target_weight);
-          setDeadline(goalData.deadline);
-          
-          // Fetch milestones if they exist
-          if (goalData.enable_milestones) {
-            const { data: milestonesData } = await supabase
-              .from('fitness_milestones')
-              .select('*')
-              .eq('goal_id', goalData.id)
-              .order('milestone_number');
-            
-            setMilestones(milestonesData || []);
-          }
-        }
-
-        // Fetch weight logs
-        const { data: logsData } = await supabase
-          .from('weight_logs')
-          .select('*')
-          .eq('user_id', user.id)
-          .order('log_date', { ascending: false });
-        
-        setWeightLogs(logsData || []);
-      } catch (refreshError) {
-        console.error('Error refreshing data:', refreshError);
-      }
-      
+      // Refresh all data
+      await refreshFitnessData();
       
     } catch (error) {
       console.error('Error saving goal:', error);
@@ -268,22 +261,29 @@ function Fitness() {
         console.error('Error deleting milestones:', milestonesError);
       }
       
+      // Archive weight logs instead of deleting them
+      const { error: logsError } = await supabase
+        .from('weight_logs')
+        .update({ goal_id: null })
+        .eq('goal_id', goalId)
+        .eq('user_id', user.id);
+      
+      if (logsError) {
+        console.error('Error archiving weight logs:', logsError);
+      }
+      
       // Delete the goal
       const { error } = await supabase
         .from('fitness_goals')
         .delete()
         .eq('id', goalId)
-        .eq('user_id', user.id); // Ensure user owns the goal
+        .eq('user_id', user.id);
       
       if (error) throw error;
       
-      // Reset state
-      setGoal(null);
-      setTargetWeight('');
-      setDeadline('');
-      setMilestones([]);
+      // Close modals and refresh data
       setIsEditGoalModalOpen(false);
-      
+      await refreshFitnessData();
       
     } catch (error) {
       console.error('Error deleting goal:', error);
@@ -291,9 +291,73 @@ function Fitness() {
     }
   };
 
+  // Refresh function for reusing data fetching logic
+  const refreshFitnessData = async () => {
+    if (!user) return;
+    
+    try {
+      // Fetch all goals
+      const { data: goalsData } = await supabase
+        .from('fitness_goals')
+        .select('*')
+        .eq('user_id', user.id)
+        .order('created_at', { ascending: false });
+      
+      setGoals(goalsData || []);
+      
+      // Update active goal if it still exists
+      const currentActiveGoal = goalsData?.find(g => g.id === activeGoal?.id) || 
+                               goalsData?.find(g => g.status === 'active') || 
+                               goalsData?.[0];
+      
+      setActiveGoal(currentActiveGoal);
+      
+      if (currentActiveGoal) {
+        setTargetWeight(currentActiveGoal.target_weight);
+        setDeadline(currentActiveGoal.deadline);
+        
+        // Fetch milestones for active goal
+        if (currentActiveGoal.enable_milestones) {
+          const { data: milestonesData } = await supabase
+            .from('fitness_milestones')
+            .select('*')
+            .eq('goal_id', currentActiveGoal.id)
+            .order('milestone_number');
+          
+          setMilestones(milestonesData || []);
+        } else {
+          setMilestones([]);
+        }
+        
+        // Fetch weight logs for active goal
+        const { data: logsData } = await supabase
+          .from('weight_logs')
+          .select('*')
+          .eq('user_id', user.id)
+          .eq('goal_id', currentActiveGoal.id)
+          .order('log_date', { ascending: false });
+        
+        setWeightLogs(logsData || []);
+      } else {
+        setMilestones([]);
+        setWeightLogs([]);
+        setTargetWeight('');
+        setDeadline('');
+      }
+    } catch (error) {
+      console.error('Error refreshing fitness data:', error);
+      setError(error.message);
+    }
+  };
+
   const handleLogWeight = async () => {
     if (!user) {
       setError('You must be logged in to log weight.');
+      return;
+    }
+    
+    if (!activeGoal) {
+      setError('Please create a fitness goal first.');
       return;
     }
 
@@ -303,7 +367,8 @@ function Fitness() {
         .insert([{
           weight: parseFloat(currentWeight),
           log_date: logDate,
-          user_id: user.id  // ✅ Add user_id
+          user_id: user.id,
+          goal_id: activeGoal.id
         }])
         .select()
         .single();
@@ -371,6 +436,87 @@ function Fitness() {
         console.error('Error deleting weight log:', error);
         setError(error.message);
       }
+    }
+  };
+
+  const handleGoalSwitch = async (goalId) => {
+    const selectedGoal = goals.find(g => g.id === goalId);
+    if (!selectedGoal) return;
+    
+    setActiveGoal(selectedGoal);
+    setTargetWeight(selectedGoal.target_weight);
+    setDeadline(selectedGoal.deadline);
+    
+    try {
+      // Fetch milestones for selected goal
+      if (selectedGoal.enable_milestones) {
+        const { data: milestonesData } = await supabase
+          .from('fitness_milestones')
+          .select('*')
+          .eq('goal_id', selectedGoal.id)
+          .order('milestone_number');
+        
+        setMilestones(milestonesData || []);
+      } else {
+        setMilestones([]);
+      }
+      
+      // Fetch weight logs for selected goal
+      const { data: logsData } = await supabase
+        .from('weight_logs')
+        .select('*')
+        .eq('user_id', user.id)
+        .eq('goal_id', selectedGoal.id)
+        .order('log_date', { ascending: false });
+      
+      setWeightLogs(logsData || []);
+    } catch (error) {
+      console.error('Error switching goal:', error);
+      setError(error.message);
+    }
+    
+    setShowGoalSelector(false);
+  };
+
+  const handleArchiveGoal = async (goalId) => {
+    try {
+      const { error } = await supabase
+        .from('fitness_goals')
+        .update({ status: 'archived', updated_at: new Date().toISOString() })
+        .eq('id', goalId)
+        .eq('user_id', user.id);
+      
+      if (error) throw error;
+      
+      await refreshFitnessData();
+    } catch (error) {
+      console.error('Error archiving goal:', error);
+      alert(`Error archiving goal: ${error.message}`);
+    }
+  };
+
+  const handleReactivateGoal = async (goalId) => {
+    try {
+      // Deactivate current active goal
+      await supabase
+        .from('fitness_goals')
+        .update({ status: 'archived' })
+        .eq('user_id', user.id)
+        .eq('status', 'active');
+      
+      // Activate selected goal
+      const { error } = await supabase
+        .from('fitness_goals')
+        .update({ status: 'active', updated_at: new Date().toISOString() })
+        .eq('id', goalId)
+        .eq('user_id', user.id);
+      
+      if (error) throw error;
+      
+      await refreshFitnessData();
+    } catch (error) {
+      console.error('Error reactivating goal:', error);
+      alert(`Error reactivating goal: ${error.message}`);
     }
   };
 
@@ -466,66 +612,160 @@ function Fitness() {
             <div className="sm:flex sm:justify-between sm:items-center mb-8">
               <div className="mb-4 sm:mb-0">
                 <h1 className="text-2xl md:text-3xl text-gray-800 dark:text-gray-100 font-bold">Fitness</h1>
+                {/* Goal selector */}
+                {goals.length > 1 && (
+                  <div className="mt-2 relative">
+                    <button
+                      onClick={() => setShowGoalSelector(!showGoalSelector)}
+                      className="flex items-center text-sm text-gray-600 dark:text-gray-400 hover:text-gray-800 dark:hover:text-gray-200"
+                    >
+                      <Target className="w-4 h-4 mr-1" />
+                      {activeGoal ? activeGoal.name : 'Select Goal'}
+                      <span className="ml-1">▼</span>
+                    </button>
+                    {showGoalSelector && (
+                      <div className="absolute top-full mt-1 w-64 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-lg z-10">
+                        <div className="p-2">
+                          <div className="text-xs text-gray-500 dark:text-gray-400 mb-2 font-medium">Active Goals</div>
+                          {goals.filter(g => g.status === 'active').map(goal => (
+                            <button
+                              key={goal.id}
+                              onClick={() => handleGoalSwitch(goal.id)}
+                              className={`w-full text-left px-3 py-2 text-sm rounded hover:bg-gray-100 dark:hover:bg-gray-700 ${
+                                activeGoal?.id === goal.id ? 'bg-indigo-50 dark:bg-indigo-900/20 text-indigo-600 dark:text-indigo-400' : ''
+                              }`}
+                            >
+                              {goal.name}
+                            </button>
+                          ))}
+                          {goals.filter(g => g.status === 'archived').length > 0 && (
+                            <>
+                              <div className="text-xs text-gray-500 dark:text-gray-400 mt-3 mb-2 font-medium">Archived Goals</div>
+                              {goals.filter(g => g.status === 'archived').map(goal => (
+                                <div key={goal.id} className="flex items-center justify-between px-3 py-2 text-sm">
+                                  <button
+                                    onClick={() => handleGoalSwitch(goal.id)}
+                                    className="flex-1 text-left text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200"
+                                  >
+                                    {goal.name}
+                                  </button>
+                                  <button
+                                    onClick={() => handleReactivateGoal(goal.id)}
+                                    className="ml-2 text-xs text-indigo-600 hover:text-indigo-700 dark:text-indigo-400"
+                                    title="Reactivate"
+                                  >
+                                    Reactivate
+                                  </button>
+                                </div>
+                              ))}
+                            </>
+                          )}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                )}
               </div>
               <div className="flex space-x-2">
-                {goal && (
+                {goals.length > 1 && (
                   <button
-                    onClick={() => setIsEditGoalModalOpen(true)}
-                    className="btn bg-white hover:bg-gray-50 text-gray-800 border border-gray-300 hover:border-gray-400 flex items-center"
+                    onClick={() => setShowGoalComparison(true)}
+                    className="btn bg-purple-500 hover:bg-purple-600 text-white flex items-center"
                   >
-                    <Edit3 className="w-4 h-4 mr-2" />
-                    Edit Goal
+                    <TrendingUp className="w-4 h-4 mr-2" />
+                    Compare Goals
                   </button>
                 )}
                 <button
-                  onClick={() => setIsLogModalOpen(true)}
-                  className="btn bg-indigo-500 hover:bg-indigo-600 text-white flex items-center"
+                  onClick={() => setIsNewGoalModalOpen(true)}
+                  className="btn bg-emerald-500 hover:bg-emerald-600 text-white flex items-center"
                 >
-                  <Plus className="w-4 h-4 mr-2" />
-                  Log Weight
+                  <Target className="w-4 h-4 mr-2" />
+                  New Goal
                 </button>
+                {activeGoal && (
+                  <>
+                    <button
+                      onClick={() => setIsEditGoalModalOpen(true)}
+                      className="btn bg-white hover:bg-gray-50 text-gray-800 border border-gray-300 hover:border-gray-400 flex items-center"
+                    >
+                      <Edit3 className="w-4 h-4 mr-2" />
+                      Edit Goal
+                    </button>
+                    <button
+                      onClick={() => setIsLogModalOpen(true)}
+                      className="btn bg-indigo-500 hover:bg-indigo-600 text-white flex items-center"
+                    >
+                      <Plus className="w-4 h-4 mr-2" />
+                      Log Weight
+                    </button>
+                  </>
+                )}
               </div>
             </div>
 
             {/* Fitness Goal Display or Setup */}
-            <FitnessOverview 
-              goal={goal}
-              weightLogs={weightLogs}
-              timeDisplayMode={timeDisplayMode}
-              setTimeDisplayMode={setTimeDisplayMode}
-              onEditGoal={() => setIsEditGoalModalOpen(true)}
-            />
+            {!activeGoal ? (
+              <div className="bg-white dark:bg-gray-800 rounded-lg shadow-lg p-8 text-center mb-8">
+                <Target className="w-16 h-16 text-gray-400 mx-auto mb-4" />
+                <h2 className="text-xl font-semibold text-gray-800 dark:text-gray-100 mb-2">
+                  Create Your First Fitness Goal
+                </h2>
+                <p className="text-gray-600 dark:text-gray-400 mb-6">
+                  Set a target weight and track your progress with detailed analytics and milestones.
+                </p>
+                <button
+                  onClick={() => setIsNewGoalModalOpen(true)}
+                  className="btn bg-indigo-500 hover:bg-indigo-600 text-white flex items-center mx-auto"
+                >
+                  <Target className="w-4 h-4 mr-2" />
+                  Create Goal
+                </button>
+              </div>
+            ) : (
+              <>
+                <FitnessOverview 
+                  goal={activeGoal}
+                  weightLogs={weightLogs}
+                  timeDisplayMode={timeDisplayMode}
+                  setTimeDisplayMode={setTimeDisplayMode}
+                  onEditGoal={() => setIsEditGoalModalOpen(true)}
+                  onArchiveGoal={() => handleArchiveGoal(activeGoal.id)}
+                  goals={goals}
+                />
 
-            {/* Weight Progress Chart */}
-            <WeightProgressChart 
-              goal={goal}
-              weightLogs={weightLogs}
-            />
+                {/* Weight Progress Chart */}
+                <WeightProgressChart 
+                  goal={activeGoal}
+                  weightLogs={weightLogs}
+                />
 
-            {/* Bottom Grid - Milestones and Progress History */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-              {/* Enhanced Milestones Card */}
-              <MilestonesCard 
-                goal={goal}
-                weightLogs={weightLogs}
-                milestones={milestones}
-              />
+                {/* Bottom Grid - Milestones and Progress History */}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                  {/* Enhanced Milestones Card */}
+                  <MilestonesCard 
+                    goal={activeGoal}
+                    weightLogs={weightLogs}
+                    milestones={milestones}
+                  />
 
-              {/* Enhanced Progress History Card */}
-              <ProgressHistoryCard 
-                weightLogs={weightLogs}
-                editingLogId={editingLogId}
-                setEditingLogId={setEditingLogId}
-                editWeight={editWeight}
-                setEditWeight={setEditWeight}
-                editDate={editDate}
-                setEditDate={setEditDate}
-                onSaveEdit={saveEditedLog}
-                onCancelEdit={cancelEditing}
-                onDeleteLog={deleteWeightLog}
-                onLogWeight={() => setIsLogModalOpen(true)}
-              />
-            </div>
+                  {/* Enhanced Progress History Card */}
+                  <ProgressHistoryCard 
+                    weightLogs={weightLogs}
+                    editingLogId={editingLogId}
+                    setEditingLogId={setEditingLogId}
+                    editWeight={editWeight}
+                    setEditWeight={setEditWeight}
+                    editDate={editDate}
+                    setEditDate={setEditDate}
+                    onSaveEdit={saveEditedLog}
+                    onCancelEdit={cancelEditing}
+                    onDeleteLog={deleteWeightLog}
+                    onLogWeight={() => setIsLogModalOpen(true)}
+                  />
+                </div>
+              </>
+            )}
           </div>
         </main>
       </div>
@@ -548,11 +788,33 @@ function Fitness() {
         setTargetWeight={setTargetWeight}
         deadline={deadline}
         setDeadline={setDeadline}
-        onSave={handleSetGoal}
-        onDelete={handleDeleteGoal} // ✅ Add this line
-        goal={goal}
+        onSave={(goalData) => handleSetGoal(goalData, false)}
+        onDelete={handleDeleteGoal}
+        goal={activeGoal}
         weightLogs={weightLogs}
         existingMilestones={milestones}
+      />
+
+      <EditGoalModal
+        isOpen={isNewGoalModalOpen}
+        onClose={() => setIsNewGoalModalOpen(false)}
+        targetWeight=''
+        setTargetWeight={() => {}}
+        deadline=''
+        setDeadline={() => {}}
+        onSave={(goalData) => handleSetGoal(goalData, true)}
+        onDelete={() => {}}
+        goal={null}
+        weightLogs={weightLogs}
+        existingMilestones={[]}
+        isNewGoal={true}
+      />
+
+      <GoalComparison
+        isOpen={showGoalComparison}
+        onClose={() => setShowGoalComparison(false)}
+        goals={goals}
+        userId={user?.id}
       />
     </div>
   );
