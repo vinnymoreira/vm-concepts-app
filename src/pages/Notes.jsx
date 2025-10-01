@@ -3,11 +3,13 @@ import { useNavigate } from 'react-router-dom';
 import { supabase } from '../supabaseClient';
 import Sidebar from '../partials/Sidebar';
 import Header from '../partials/Header';
-import { Plus, FileText, Star, Folder, Search, Upload } from 'lucide-react';
+import { Plus, FileText, Star, Folder, Search, Upload, LayoutGrid, List } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import NotesGrid from '../partials/notes/NotesGrid';
+import NotesListView from '../partials/notes/NotesListView';
 import NotesSidebar from '../partials/notes/NotesSidebar';
 import AddCategoryModal from '../partials/notes/AddCategoryModal';
+import EditCategoryModal from '../partials/notes/EditCategoryModal';
 import ImportNotesModal from '../partials/notes/ImportNotesModal';
 
 function Notes() {
@@ -19,8 +21,11 @@ function Notes() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [isAddCategoryModalOpen, setIsAddCategoryModalOpen] = useState(false);
+  const [isEditCategoryModalOpen, setIsEditCategoryModalOpen] = useState(false);
+  const [editingCategory, setEditingCategory] = useState(null);
   const [isImportModalOpen, setIsImportModalOpen] = useState(false);
   const [viewMode, setViewMode] = useState('all'); // 'all', 'favorites'
+  const [displayMode, setDisplayMode] = useState('list'); // 'list', 'grid'
 
   const { user, loading: authLoading } = useAuth();
   const navigate = useNavigate();
@@ -176,6 +181,13 @@ function Notes() {
     if (!user) return;
 
     try {
+      // Optimistically update UI
+      setNotes(prevNotes =>
+        prevNotes.map(note =>
+          note.id === noteId ? { ...note, is_favorite: !currentFavoriteState } : note
+        )
+      );
+
       const { error } = await supabase
         .from('notes')
         .update({ is_favorite: !currentFavoriteState })
@@ -183,13 +195,45 @@ function Notes() {
         .eq('user_id', user.id);
 
       if (error) throw error;
-
-      // Refresh notes
-      await fetchNotes();
     } catch (err) {
       console.error('Error toggling favorite:', err);
       setError(err.message);
+      // Revert on error
+      await fetchNotes();
     }
+  };
+
+  const handleNotesReordered = async (reorderedNotes, categoryId) => {
+    if (!user) return;
+
+    try {
+      // Update positions in database
+      const updates = reorderedNotes.map((note, index) =>
+        supabase
+          .from('notes')
+          .update({ position: index })
+          .eq('id', note.id)
+          .eq('user_id', user.id)
+      );
+
+      await Promise.all(updates);
+
+      // Refresh notes to reflect new order
+      await fetchNotes();
+    } catch (err) {
+      console.error('Error reordering notes:', err);
+      setError(err.message);
+    }
+  };
+
+  const handleEditCategory = (category) => {
+    setEditingCategory(category);
+    setIsEditCategoryModalOpen(true);
+  };
+
+  const handleCategoryUpdated = async () => {
+    await fetchCategories();
+    setEditingCategory(null);
   };
 
   const handleCategoryCreated = async () => {
@@ -294,6 +338,7 @@ function Notes() {
                 selectedCategory={selectedCategory}
                 onCategorySelect={handleCategorySelect}
                 onAddCategory={() => setIsAddCategoryModalOpen(true)}
+                onEditCategory={handleEditCategory}
                 viewMode={viewMode}
                 onViewModeChange={setViewMode}
                 onCategoriesChange={fetchCategories}
@@ -301,9 +346,9 @@ function Notes() {
 
               {/* Main content */}
               <div className="flex-1">
-                {/* Search bar */}
-                <div className="mb-6">
-                  <div className="relative">
+                {/* Search bar and view toggle */}
+                <div className="mb-6 flex gap-3">
+                  <div className="relative flex-1">
                     <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400" />
                     <input
                       type="text"
@@ -313,16 +358,53 @@ function Notes() {
                       className="w-full pl-10 pr-4 py-2 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg focus:ring-2 focus:ring-violet-500 focus:border-transparent"
                     />
                   </div>
+
+                  {/* View toggle */}
+                  <div className="flex gap-1 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg p-1">
+                    <button
+                      onClick={() => setDisplayMode('list')}
+                      className={`p-2 rounded ${
+                        displayMode === 'list'
+                          ? 'bg-violet-500 text-white'
+                          : 'text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700'
+                      }`}
+                      title="List view"
+                    >
+                      <List className="w-5 h-5" />
+                    </button>
+                    <button
+                      onClick={() => setDisplayMode('grid')}
+                      className={`p-2 rounded ${
+                        displayMode === 'grid'
+                          ? 'bg-violet-500 text-white'
+                          : 'text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700'
+                      }`}
+                      title="Grid view"
+                    >
+                      <LayoutGrid className="w-5 h-5" />
+                    </button>
+                  </div>
                 </div>
 
-                {/* Notes grid */}
-                <NotesGrid
-                  notes={filteredNotes}
-                  onNoteClick={(noteId) => navigate(`/notes/${noteId}`)}
-                  onDeleteNote={handleDeleteNote}
-                  onToggleFavorite={handleToggleFavorite}
-                  categories={categories}
-                />
+                {/* Notes display */}
+                {displayMode === 'list' ? (
+                  <NotesListView
+                    notes={filteredNotes}
+                    categories={categories}
+                    onNoteClick={(noteId) => navigate(`/notes/${noteId}`)}
+                    onDeleteNote={handleDeleteNote}
+                    onToggleFavorite={handleToggleFavorite}
+                    onNotesReordered={handleNotesReordered}
+                  />
+                ) : (
+                  <NotesGrid
+                    notes={filteredNotes}
+                    onNoteClick={(noteId) => navigate(`/notes/${noteId}`)}
+                    onDeleteNote={handleDeleteNote}
+                    onToggleFavorite={handleToggleFavorite}
+                    categories={categories}
+                  />
+                )}
 
                 {/* Empty state */}
                 {filteredNotes.length === 0 && !loading && (
@@ -358,6 +440,16 @@ function Notes() {
         isOpen={isAddCategoryModalOpen}
         onClose={() => setIsAddCategoryModalOpen(false)}
         onCategoryCreated={handleCategoryCreated}
+      />
+
+      <EditCategoryModal
+        isOpen={isEditCategoryModalOpen}
+        onClose={() => {
+          setIsEditCategoryModalOpen(false);
+          setEditingCategory(null);
+        }}
+        onCategoryUpdated={handleCategoryUpdated}
+        category={editingCategory}
       />
 
       <ImportNotesModal

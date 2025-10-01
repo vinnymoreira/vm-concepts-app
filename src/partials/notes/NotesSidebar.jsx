@@ -80,6 +80,7 @@ function NotesSidebar({
   selectedCategory,
   onCategorySelect,
   onAddCategory,
+  onEditCategory,
   viewMode,
   onViewModeChange,
   onCategoriesChange
@@ -229,10 +230,7 @@ function NotesSidebar({
                       category={category}
                       isSelected={selectedCategory === category.id}
                       onSelect={onCategorySelect}
-                      onEdit={(cat) => {
-                        // This would open an edit modal - for now just show alert
-                        alert('Edit functionality coming soon!');
-                      }}
+                      onEdit={onEditCategory}
                       onDelete={handleDeleteCategory}
                     />
                   ))}
