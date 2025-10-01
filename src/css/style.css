@@ -6,5 +6,6 @@
 /* Additional styles */
 @import 'additional-styles/utility-patterns.css';
 @import 'additional-styles/flatpickr.css';
+@import 'additional-styles/tiptap.css';
 
 @import 'tailwindcss/utilities';

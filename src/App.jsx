@@ -11,6 +11,8 @@ import Tasks from './pages/Tasks';
 import Fitness from './pages/Fitness';
 import Habits from './pages/Habits';
 import Profile from './pages/Profile';
+import Notes from './pages/Notes';
+import NoteEditor from './pages/NoteEditor';
 
 
 // Import auth components
@@ -59,6 +61,16 @@ function App() {
         <Route path="/habits" element={
           <ProtectedRoute>
             <Habits />
+          </ProtectedRoute>
+        } />
+        <Route path="/notes" element={
+          <ProtectedRoute>
+            <Notes />
+          </ProtectedRoute>
+        } />
+        <Route path="/notes/:id" element={
+          <ProtectedRoute>
+            <NoteEditor />
           </ProtectedRoute>
         } />
         <Route path="/profile" element={
