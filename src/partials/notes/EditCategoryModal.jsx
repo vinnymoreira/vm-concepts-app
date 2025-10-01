@@ -3,32 +3,12 @@ import { X } from 'lucide-react';
 import { supabase } from '../../supabaseClient';
 import { useAuth } from '../../context/AuthContext';
 
-const PRESET_COLORS = [
-  '#ef4444', // red
-  '#f97316', // orange
-  '#f59e0b', // amber
-  '#eab308', // yellow
-  '#84cc16', // lime
-  '#22c55e', // green
-  '#10b981', // emerald
-  '#14b8a6', // teal
-  '#06b6d4', // cyan
-  '#0ea5e9', // sky
-  '#3b82f6', // blue
-  '#6366f1', // indigo
-  '#8b5cf6', // violet
-  '#a855f7', // purple
-  '#d946ef', // fuchsia
-  '#ec4899', // pink
-];
-
-const PRESET_ICONS = ['📁', '📝', '💼', '🎯', '💡', '📚', '🔥', '⭐', '✨', '🚀', '💻', '🎨', '📊', '🎓', '🏠'];
+const PRESET_ICONS = ['⭕', '📁', '📝', '💼', '🎯', '💡', '📚', '🔥', '⭐', '✨', '🚀', '💻', '🎨', '📊', '🎓', '🏠'];
 
 function EditCategoryModal({ isOpen, onClose, onCategoryUpdated, category }) {
   const { user } = useAuth();
   const [name, setName] = useState('');
-  const [color, setColor] = useState('#6366f1');
-  const [icon, setIcon] = useState('📁');
+  const [icon, setIcon] = useState('⭕');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
 
@@ -36,8 +16,7 @@ function EditCategoryModal({ isOpen, onClose, onCategoryUpdated, category }) {
   useEffect(() => {
     if (category) {
       setName(category.name || '');
-      setColor(category.color || '#6366f1');
-      setIcon(category.icon || '📁');
+      setIcon(category.icon || '⭕');
     }
   }, [category]);
 
@@ -57,7 +36,6 @@ function EditCategoryModal({ isOpen, onClose, onCategoryUpdated, category }) {
         .from('note_categories')
         .update({
           name: name.trim(),
-          color,
           icon,
         })
         .eq('id', category.id)
@@ -122,12 +100,12 @@ function EditCategoryModal({ isOpen, onClose, onCategoryUpdated, category }) {
           </div>
 
           {/* Icon */}
-          <div className="mb-4">
+          <div className="mb-6">
             <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-              Icon
+              Icon (Optional)
             </label>
             <div className="flex flex-wrap gap-2">
-              {PRESET_ICONS.map((presetIcon) => (
+              {PRESET_ICONS.map((presetIcon, index) => (
                 <button
                   key={presetIcon}
                   type="button"
@@ -137,34 +115,19 @@ function EditCategoryModal({ isOpen, onClose, onCategoryUpdated, category }) {
                       ? 'border-violet-500 bg-violet-50 dark:bg-violet-900/20'
                       : 'border-gray-200 dark:border-gray-600 hover:border-gray-300 dark:hover:border-gray-500'
                   }`}
+                  title={index === 0 ? 'None' : presetIcon}
                 >
-                  {presetIcon}
+                  {index === 0 ? (
+                    <span className="text-red-500 font-bold text-2xl">⭕</span>
+                  ) : (
+                    presetIcon
+                  )}
                 </button>
               ))}
             </div>
-          </div>
-
-          {/* Color */}
-          <div className="mb-6">
-            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-              Color
-            </label>
-            <div className="flex flex-wrap gap-2">
-              {PRESET_COLORS.map((presetColor) => (
-                <button
-                  key={presetColor}
-                  type="button"
-                  onClick={() => setColor(presetColor)}
-                  className={`w-8 h-8 rounded-lg border-2 transition-all ${
-                    color === presetColor
-                      ? 'border-gray-800 dark:border-white scale-110'
-                      : 'border-transparent hover:scale-105'
-                  }`}
-                  style={{ backgroundColor: presetColor }}
-                  title={presetColor}
-                />
-              ))}
-            </div>
+            <p className="text-xs text-gray-500 dark:text-gray-400 mt-2">
+              First option (⭕) = No icon
+            </p>
           </div>
 
           {/* Actions */}

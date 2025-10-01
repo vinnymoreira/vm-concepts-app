@@ -104,8 +104,7 @@ function SortableNoteItem({ note, category, onNoteClick, onDeleteNote, onToggleF
           <div className="flex items-center gap-3 text-xs text-gray-500 dark:text-gray-500">
             {category && (
               <div className="flex items-center gap-1">
-                <Folder className="w-3 h-3" style={{ color: category.color }} />
-                <span>{category.icon} {category.name}</span>
+                <span>{category.icon && category.icon !== '⭕' && `${category.icon} `}{category.name}</span>
               </div>
             )}
             <div className="flex items-center gap-1">
@@ -205,9 +204,8 @@ function NotesListView({ notes, categories, onNoteClick, onDeleteNote, onToggleF
           <div className="flex items-center gap-2 mb-3">
             {group.category ? (
               <>
-                <Folder className="w-5 h-5" style={{ color: group.category.color }} />
                 <h2 className="text-lg font-semibold text-gray-800 dark:text-gray-100">
-                  {group.category.icon} {group.category.name}
+                  {group.category.icon && group.category.icon !== '⭕' && `${group.category.icon} `}{group.category.name}
                 </h2>
                 <span className="text-sm text-gray-500 dark:text-gray-400">
                   ({group.notes.length})
@@ -215,7 +213,6 @@ function NotesListView({ notes, categories, onNoteClick, onDeleteNote, onToggleF
               </>
             ) : (
               <>
-                <Folder className="w-5 h-5 text-gray-400" />
                 <h2 className="text-lg font-semibold text-gray-800 dark:text-gray-100">
                   Uncategorized
                 </h2>

@@ -43,9 +43,8 @@ function SortableCategory({ category, isSelected, onSelect, onEdit, onDelete }) 
       </div>
 
       {/* Category info */}
-      <Folder className="w-4 h-4 flex-shrink-0" style={{ color: category.color }} />
       <span className="text-sm font-medium flex-1 truncate">
-        {category.icon} {category.name}
+        {category.icon && category.icon !== '⭕' && `${category.icon} `}{category.name}
       </span>
 
       {/* Actions */}

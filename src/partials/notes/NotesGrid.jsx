@@ -48,14 +48,8 @@ function NotesGrid({ notes, onNoteClick, onDeleteNote, onToggleFavorite, categor
                 </h3>
                 {category && (
                   <div className="flex items-center gap-1 text-sm">
-                    <span
-                      className="px-2 py-0.5 rounded-full text-xs font-medium"
-                      style={{
-                        backgroundColor: `${category.color}20`,
-                        color: category.color,
-                      }}
-                    >
-                      {category.icon} {category.name}
+                    <span className="text-xs font-medium text-gray-600 dark:text-gray-400">
+                      {category.icon && category.icon !== '⭕' && `${category.icon} `}{category.name}
                     </span>
                   </div>
                 )}
