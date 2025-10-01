@@ -157,43 +157,6 @@ function NotesSidebar({
   return (
     <div className="w-64 flex-shrink-0">
       <div className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg p-4">
-        {/* Views */}
-        <div className="mb-6">
-          <h3 className="text-xs uppercase text-gray-500 dark:text-gray-400 font-semibold mb-3">
-            Views
-          </h3>
-
-          <button
-            onClick={() => {
-              onViewModeChange('all');
-              onCategorySelect(null);
-            }}
-            className={`w-full flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium mb-1 ${
-              viewMode === 'all' && !selectedCategory
-                ? 'bg-violet-100 dark:bg-violet-900/20 text-violet-600 dark:text-violet-400'
-                : 'hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-300'
-            }`}
-          >
-            <FileText className="w-4 h-4" />
-            <span>All Notes</span>
-          </button>
-
-          <button
-            onClick={() => {
-              onViewModeChange('favorites');
-              onCategorySelect(null);
-            }}
-            className={`w-full flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium ${
-              viewMode === 'favorites'
-                ? 'bg-violet-100 dark:bg-violet-900/20 text-violet-600 dark:text-violet-400'
-                : 'hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-300'
-            }`}
-          >
-            <Star className="w-4 h-4" />
-            <span>Favorites</span>
-          </button>
-        </div>
-
         {/* Categories */}
         <div>
           <div className="flex items-center justify-between mb-3">
@@ -209,9 +172,44 @@ function NotesSidebar({
             </button>
           </div>
 
+          <div className="space-y-1 mb-3">
+            {/* All Notes */}
+            <button
+              onClick={() => {
+                onViewModeChange('all');
+                onCategorySelect(null);
+              }}
+              className={`w-full flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium ${
+                viewMode === 'all' && !selectedCategory
+                  ? 'bg-violet-100 dark:bg-violet-900/20 text-violet-600 dark:text-violet-400'
+                  : 'hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-300'
+              }`}
+            >
+              <FileText className="w-4 h-4" />
+              <span>All Notes</span>
+            </button>
+
+            {/* Favorites */}
+            <button
+              onClick={() => {
+                onViewModeChange('favorites');
+                onCategorySelect(null);
+              }}
+              className={`w-full flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium ${
+                viewMode === 'favorites'
+                  ? 'bg-violet-100 dark:bg-violet-900/20 text-violet-600 dark:text-violet-400'
+                  : 'hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-300'
+              }`}
+            >
+              <Star className="w-4 h-4" />
+              <span>Favorites</span>
+            </button>
+          </div>
+
+          {/* User Categories with Drag and Drop */}
           {localCategories.length === 0 ? (
             <p className="text-sm text-gray-500 dark:text-gray-400 text-center py-4">
-              No categories yet
+              No custom categories yet
             </p>
           ) : (
             <DndContext
