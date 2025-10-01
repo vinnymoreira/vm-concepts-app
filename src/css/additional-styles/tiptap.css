@@ -18,6 +18,7 @@
 .ProseMirror {
   padding: 1rem;
   min-height: 500px;
+  color: #1f2937; /* Default dark gray for light mode */
 }
 
 .ProseMirror h1,
@@ -143,23 +144,21 @@
 }
 
 /* Dark mode styles */
-@media (prefers-color-scheme: dark) {
-  .ProseMirror {
-    color: #f3f4f6;
-  }
+.dark .ProseMirror {
+  color: #f3f4f6;
+}
 
-  .ProseMirror code {
-    background-color: rgba(139, 92, 246, 0.2);
-    color: #a78bfa;
-  }
+.dark .ProseMirror code {
+  background-color: rgba(139, 92, 246, 0.2);
+  color: #a78bfa;
+}
 
-  .ProseMirror blockquote {
-    color: #9ca3af;
-  }
+.dark .ProseMirror blockquote {
+  color: #9ca3af;
+}
 
-  .ProseMirror hr {
-    border-top-color: #374151;
-  }
+.dark .ProseMirror hr {
+  border-top-color: #374151;
 }
 
 /* Selection */
