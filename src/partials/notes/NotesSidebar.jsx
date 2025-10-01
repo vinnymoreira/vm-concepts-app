@@ -192,6 +192,7 @@ function NotesSidebar({
             {/* Favorites */}
             <button
               onClick={() => {
+                console.log('[Favorites Button] Clicked! Setting viewMode to favorites');
                 onViewModeChange('favorites');
                 onCategorySelect(null);
               }}

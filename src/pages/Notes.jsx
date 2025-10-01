@@ -27,6 +27,11 @@ function Notes() {
   const [viewMode, setViewMode] = useState('all'); // 'all', 'favorites'
   const [displayMode, setDisplayMode] = useState('list'); // 'list', 'grid'
 
+  // Debug: Log viewMode changes
+  useEffect(() => {
+    console.log('[Notes.jsx] viewMode changed to:', viewMode);
+  }, [viewMode]);
+
   const { user, loading: authLoading } = useAuth();
   const navigate = useNavigate();
 
@@ -77,6 +82,9 @@ function Notes() {
     if (!user) return;
 
     try {
+      console.log('[fetchNotes] Current viewMode:', viewMode);
+      console.log('[fetchNotes] Selected category:', selectedCategory);
+
       let query = supabase
         .from('notes')
         .select('*')
@@ -84,11 +92,13 @@ function Notes() {
 
       // Apply category filter if a specific category is selected
       if (selectedCategory) {
+        console.log('[fetchNotes] Applying category filter:', selectedCategory);
         query = query.eq('category_id', selectedCategory);
       }
 
       // Apply favorites filter if in favorites view mode
       if (viewMode === 'favorites') {
+        console.log('[fetchNotes] Applying favorites filter');
         query = query.eq('is_favorite', true);
       }
 
@@ -100,6 +110,9 @@ function Notes() {
       const { data, error } = await query;
 
       if (error) throw error;
+
+      console.log('[fetchNotes] Fetched notes count:', data?.length);
+      console.log('[fetchNotes] Notes:', data?.map(n => ({ id: n.id, title: n.title, is_favorite: n.is_favorite })));
 
       if (isMounted) {
         setNotes(data || []);
@@ -255,8 +268,13 @@ function Notes() {
   };
 
   const handleCategorySelect = (categoryId) => {
+    console.log('[handleCategorySelect] Called with categoryId:', categoryId);
     setSelectedCategory(categoryId);
-    setViewMode('all');
+    // Only set viewMode to 'all' if selecting an actual category, not when clearing (null)
+    if (categoryId !== null) {
+      console.log('[handleCategorySelect] Setting viewMode to all');
+      setViewMode('all');
+    }
   };
 
   const handleNotesImported = async () => {
