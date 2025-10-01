@@ -3,7 +3,8 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { supabase } from '../supabaseClient';
 import Sidebar from '../partials/Sidebar';
 import Header from '../partials/Header';
-import { ArrowLeft, Star, Trash2, Folder } from 'lucide-react';
+import { ArrowLeft, Star, Trash2, Folder, Calendar } from 'lucide-react';
+import { format } from 'date-fns';
 import { useAuth } from '../context/AuthContext';
 import TiptapEditor from '../partials/notes/TiptapEditor';
 import debounce from '../utils/debounce';
@@ -326,9 +327,23 @@ function NoteEditor() {
               value={title}
               onChange={handleTitleChange}
               placeholder="Untitled"
-              className="w-full text-4xl font-bold mb-6 bg-transparent border-none focus:ring-0 text-gray-800 dark:text-gray-100 placeholder-gray-400 dark:placeholder-gray-500"
+              className="w-full text-4xl font-bold mb-2 bg-transparent border-none focus:ring-0 text-gray-800 dark:text-gray-100 placeholder-gray-400 dark:placeholder-gray-500"
               style={{ outline: 'none' }}
             />
+
+            {/* Note metadata */}
+            <div className="flex items-center gap-4 mb-6 text-sm text-gray-500 dark:text-gray-400">
+              <div className="flex items-center gap-1">
+                <Calendar className="w-4 h-4" />
+                <span>Created {format(new Date(note?.created_at), 'MMM d, yyyy')}</span>
+              </div>
+              {note?.last_edited_at && note.last_edited_at !== note.created_at && (
+                <div className="flex items-center gap-1">
+                  <span>•</span>
+                  <span>Last edited {format(new Date(note.last_edited_at), 'MMM d, yyyy')}</span>
+                </div>
+              )}
+            </div>
 
             {/* Editor */}
             {content && (

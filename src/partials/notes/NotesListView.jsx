@@ -2,10 +2,9 @@ import React from 'react';
 import { DndContext, closestCenter, KeyboardSensor, PointerSensor, useSensor, useSensors } from '@dnd-kit/core';
 import { arrayMove, SortableContext, sortableKeyboardCoordinates, verticalListSortingStrategy, useSortable } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
-import { Star, Trash2, Calendar, Folder } from 'lucide-react';
-import { format } from 'date-fns';
+import { Star, Trash2 } from 'lucide-react';
 
-function SortableNoteItem({ note, category, onNoteClick, onDeleteNote, onToggleFavorite }) {
+function SortableNoteItem({ note, onNoteClick, onDeleteNote, onToggleFavorite }) {
   const {
     attributes,
     listeners,
@@ -21,48 +20,23 @@ function SortableNoteItem({ note, category, onNoteClick, onDeleteNote, onToggleF
     opacity: isDragging ? 0.5 : 1,
   };
 
-  // Helper function to extract plain text from Tiptap JSON content
-  const getPlainText = (content) => {
-    if (!content || !content.content) return '';
-
-    let text = '';
-    const traverse = (nodes) => {
-      nodes.forEach(node => {
-        if (node.type === 'text') {
-          text += node.text;
-        } else if (node.content) {
-          traverse(node.content);
-        }
-      });
-    };
-
-    traverse(content.content);
-    return text.substring(0, 150);
-  };
-
-  const preview = getPlainText(note.content);
-
   return (
     <div
       ref={setNodeRef}
       style={style}
       {...attributes}
       {...listeners}
-      className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg p-4 hover:shadow-md transition-shadow cursor-grab active:cursor-grabbing group"
       onClick={() => onNoteClick(note.id)}
+      className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg py-1 px-3 hover:shadow-md transition-shadow cursor-pointer"
     >
-      <div className="flex items-start justify-between mb-2">
-        <div className="flex-1 min-w-0">
-          <h3 className="text-base font-semibold text-gray-800 dark:text-gray-100 mb-1">
-            {note.title || 'Untitled'}
-          </h3>
-          <p className="text-sm text-gray-600 dark:text-gray-400 line-clamp-2">
-            {preview || 'No content'}
-          </p>
-        </div>
+      <div className="flex items-center justify-between gap-4">
+        {/* Title */}
+        <h3 className="text-sm font-semibold text-gray-800 dark:text-gray-100 truncate flex-1">
+          {note.title || 'Untitled'}
+        </h3>
 
         {/* Actions */}
-        <div className="flex items-center gap-1 ml-4 flex-shrink-0">
+        <div className="flex items-center gap-1 flex-shrink-0">
           <button
             onClick={(e) => {
               e.stopPropagation();
@@ -90,26 +64,18 @@ function SortableNoteItem({ note, category, onNoteClick, onDeleteNote, onToggleF
           </button>
         </div>
       </div>
-
-      {/* Metadata */}
-      <div className="flex items-center gap-3 text-xs text-gray-500 dark:text-gray-500">
-        {category && (
-          <div className="flex items-center gap-1">
-            <span>{category.icon && category.icon !== '🚫' && `${category.icon} `}{category.name}</span>
-          </div>
-        )}
-        <div className="flex items-center gap-1">
-          <Calendar className="w-3 h-3" />
-          {format(new Date(note.last_edited_at || note.created_at), 'MMM d, yyyy')}
-        </div>
-      </div>
     </div>
   );
 }
 
 function NotesListView({ notes, categories, onNoteClick, onDeleteNote, onToggleFavorite, onNotesReordered }) {
   const sensors = useSensors(
-    useSensor(PointerSensor),
+    useSensor(PointerSensor, {
+      activationConstraint: {
+        delay: 150,
+        tolerance: 5,
+      },
+    }),
     useSensor(KeyboardSensor, {
       coordinateGetter: sortableKeyboardCoordinates,
     })
@@ -176,11 +142,6 @@ function NotesListView({ notes, categories, onNoteClick, onDeleteNote, onToggleF
     }
   };
 
-  // Helper function to get category info
-  const getCategoryInfo = (categoryId) => {
-    return categories.find(c => c.id === categoryId) || null;
-  };
-
   if (groupedNotes.length === 0) {
     return null;
   }
@@ -227,7 +188,6 @@ function NotesListView({ notes, categories, onNoteClick, onDeleteNote, onToggleF
                   <SortableNoteItem
                     key={note.id}
                     note={note}
-                    category={getCategoryInfo(note.category_id)}
                     onNoteClick={onNoteClick}
                     onDeleteNote={onDeleteNote}
                     onToggleFavorite={onToggleFavorite}

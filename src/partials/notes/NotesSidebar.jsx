@@ -28,12 +28,12 @@ function SortableCategory({ category, isSelected, onSelect, onEdit, onDelete }) 
       style={style}
       {...attributes}
       {...listeners}
-      className={`flex items-center gap-2 px-3 py-2 rounded-lg cursor-grab active:cursor-grabbing group ${
+      onClick={() => onSelect(category.id)}
+      className={`flex items-center gap-2 px-3 py-2 rounded-lg group relative cursor-pointer ${
         isSelected
           ? 'bg-violet-100 dark:bg-violet-900/20 text-violet-600 dark:text-violet-400'
           : 'hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-300'
       }`}
-      onClick={() => onSelect(category.id)}
     >
       {/* Category info */}
       <span className="text-sm font-medium flex-1 truncate">
@@ -41,7 +41,7 @@ function SortableCategory({ category, isSelected, onSelect, onEdit, onDelete }) 
       </span>
 
       {/* Actions */}
-      <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100">
+      <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 flex-shrink-0">
         <button
           onClick={(e) => {
             e.stopPropagation();
@@ -81,7 +81,12 @@ function NotesSidebar({
   const [localCategories, setLocalCategories] = useState(categories);
 
   const sensors = useSensors(
-    useSensor(PointerSensor),
+    useSensor(PointerSensor, {
+      activationConstraint: {
+        delay: 150,
+        tolerance: 5,
+      },
+    }),
     useSensor(KeyboardSensor, {
       coordinateGetter: sortableKeyboardCoordinates,
     })
