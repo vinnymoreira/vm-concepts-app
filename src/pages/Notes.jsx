@@ -80,16 +80,22 @@ function Notes() {
       let query = supabase
         .from('notes')
         .select('*')
-        .eq('user_id', user.id)
-        .order('last_edited_at', { ascending: false });
+        .eq('user_id', user.id);
 
+      // Apply category filter if a specific category is selected
       if (selectedCategory) {
         query = query.eq('category_id', selectedCategory);
       }
 
+      // Apply favorites filter if in favorites view mode
       if (viewMode === 'favorites') {
         query = query.eq('is_favorite', true);
       }
+
+      // Always order by position first (for drag-and-drop), then by last edited
+      query = query
+        .order('position', { ascending: true, nullsFirst: false })
+        .order('last_edited_at', { ascending: false });
 
       const { data, error } = await query;
 
@@ -181,25 +187,33 @@ function Notes() {
     if (!user) return;
 
     try {
-      // Optimistically update UI
-      setNotes(prevNotes =>
-        prevNotes.map(note =>
-          note.id === noteId ? { ...note, is_favorite: !currentFavoriteState } : note
-        )
-      );
+      const newFavoriteState = !currentFavoriteState;
 
+      // Update in database
       const { error } = await supabase
         .from('notes')
-        .update({ is_favorite: !currentFavoriteState })
+        .update({ is_favorite: newFavoriteState })
         .eq('id', noteId)
         .eq('user_id', user.id);
 
       if (error) throw error;
+
+      // If we're in favorites view and unfavoriting, remove from list
+      // Otherwise update the state
+      if (viewMode === 'favorites' && !newFavoriteState) {
+        setNotes(prevNotes => prevNotes.filter(note => note.id !== noteId));
+      } else {
+        setNotes(prevNotes =>
+          prevNotes.map(note =>
+            note.id === noteId ? { ...note, is_favorite: newFavoriteState } : note
+          )
+        );
+      }
     } catch (err) {
       console.error('Error toggling favorite:', err);
       setError(err.message);
-      // Revert on error
-      await fetchNotes();
+      // Refresh on error
+      await fetchNotes(true);
     }
   };
 
@@ -261,9 +275,9 @@ function Notes() {
   // Refresh notes when category or view mode changes
   useEffect(() => {
     if (user) {
-      fetchNotes();
+      fetchNotes(true);
     }
-  }, [selectedCategory, viewMode]);
+  }, [selectedCategory, viewMode, user]);
 
   if (authLoading || loading) {
     return (
