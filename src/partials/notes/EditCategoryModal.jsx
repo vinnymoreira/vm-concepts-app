@@ -3,12 +3,12 @@ import { X } from 'lucide-react';
 import { supabase } from '../../supabaseClient';
 import { useAuth } from '../../context/AuthContext';
 
-const PRESET_ICONS = ['⭕', '📁', '📝', '💼', '🎯', '💡', '📚', '🔥', '⭐', '✨', '🚀', '💻', '🎨', '📊', '🎓', '🏠'];
+const PRESET_ICONS = ['🚫', '📁', '📝', '💼', '🎯', '💡', '📚', '🔥', '⭐', '✨', '🚀', '💻', '🎨', '📊', '🎓', '🏠'];
 
 function EditCategoryModal({ isOpen, onClose, onCategoryUpdated, category }) {
   const { user } = useAuth();
   const [name, setName] = useState('');
-  const [icon, setIcon] = useState('⭕');
+  const [icon, setIcon] = useState('🚫');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
 
@@ -16,7 +16,7 @@ function EditCategoryModal({ isOpen, onClose, onCategoryUpdated, category }) {
   useEffect(() => {
     if (category) {
       setName(category.name || '');
-      setIcon(category.icon || '⭕');
+      setIcon(category.icon || '🚫');
     }
   }, [category]);
 
@@ -118,7 +118,7 @@ function EditCategoryModal({ isOpen, onClose, onCategoryUpdated, category }) {
                   title={index === 0 ? 'None' : presetIcon}
                 >
                   {index === 0 ? (
-                    <span className="text-red-500 font-bold text-2xl">⭕</span>
+                    <span className="text-red-500 font-bold text-2xl">🚫</span>
                   ) : (
                     presetIcon
                   )}
@@ -126,7 +126,7 @@ function EditCategoryModal({ isOpen, onClose, onCategoryUpdated, category }) {
               ))}
             </div>
             <p className="text-xs text-gray-500 dark:text-gray-400 mt-2">
-              First option (⭕) = No icon
+              First option (🚫) = No icon
             </p>
           </div>
 

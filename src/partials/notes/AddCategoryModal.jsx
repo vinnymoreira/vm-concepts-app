@@ -3,12 +3,12 @@ import { X } from 'lucide-react';
 import { supabase } from '../../supabaseClient';
 import { useAuth } from '../../context/AuthContext';
 
-const PRESET_ICONS = ['⭕', '📁', '📝', '💼', '🎯', '💡', '📚', '🔥', '⭐', '✨', '🚀', '💻', '🎨', '📊', '🎓', '🏠'];
+const PRESET_ICONS = ['🚫', '📁', '📝', '💼', '🎯', '💡', '📚', '🔥', '⭐', '✨', '🚀', '💻', '🎨', '📊', '🎓', '🏠'];
 
 function AddCategoryModal({ isOpen, onClose, onCategoryCreated }) {
   const { user } = useAuth();
   const [name, setName] = useState('');
-  const [icon, setIcon] = useState('⭕'); // Default to "None"
+  const [icon, setIcon] = useState('🚫'); // Default to "None"
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
 
@@ -39,7 +39,7 @@ function AddCategoryModal({ isOpen, onClose, onCategoryCreated }) {
 
       // Reset form
       setName('');
-      setIcon('⭕');
+      setIcon('🚫');
 
       onCategoryCreated();
       onClose();
@@ -111,7 +111,7 @@ function AddCategoryModal({ isOpen, onClose, onCategoryCreated }) {
                   title={index === 0 ? 'None' : presetIcon}
                 >
                   {index === 0 ? (
-                    <span className="text-red-500 font-bold text-2xl">⭕</span>
+                    <span className="text-red-500 font-bold text-2xl">🚫</span>
                   ) : (
                     presetIcon
                   )}
@@ -119,7 +119,7 @@ function AddCategoryModal({ isOpen, onClose, onCategoryCreated }) {
               ))}
             </div>
             <p className="text-xs text-gray-500 dark:text-gray-400 mt-2">
-              First option (⭕) = No icon
+              First option (🚫) = No icon
             </p>
           </div>
 

@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { DndContext, closestCenter, KeyboardSensor, PointerSensor, useSensor, useSensors } from '@dnd-kit/core';
 import { arrayMove, SortableContext, sortableKeyboardCoordinates, verticalListSortingStrategy, useSortable } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
-import { Plus, Folder, Star, FileText, GripVertical, Edit2, Trash2 } from 'lucide-react';
+import { Plus, Folder, Star, FileText, Edit2, Trash2 } from 'lucide-react';
 import { supabase } from '../../supabaseClient';
 import { useAuth } from '../../context/AuthContext';
 
@@ -26,25 +26,18 @@ function SortableCategory({ category, isSelected, onSelect, onEdit, onDelete }) 
     <div
       ref={setNodeRef}
       style={style}
-      className={`flex items-center gap-2 px-3 py-2 rounded-lg cursor-pointer group ${
+      {...attributes}
+      {...listeners}
+      className={`flex items-center gap-2 px-3 py-2 rounded-lg cursor-grab active:cursor-grabbing group ${
         isSelected
           ? 'bg-violet-100 dark:bg-violet-900/20 text-violet-600 dark:text-violet-400'
           : 'hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-300'
       }`}
       onClick={() => onSelect(category.id)}
     >
-      {/* Drag handle */}
-      <div
-        {...attributes}
-        {...listeners}
-        className="opacity-0 group-hover:opacity-100 cursor-grab active:cursor-grabbing"
-      >
-        <GripVertical className="w-4 h-4 text-gray-400" />
-      </div>
-
       {/* Category info */}
       <span className="text-sm font-medium flex-1 truncate">
-        {category.icon && category.icon !== '⭕' && `${category.icon} `}{category.name}
+        {category.icon && category.icon !== '🚫' && `${category.icon} `}{category.name}
       </span>
 
       {/* Actions */}

@@ -2,7 +2,7 @@ import React from 'react';
 import { DndContext, closestCenter, KeyboardSensor, PointerSensor, useSensor, useSensors } from '@dnd-kit/core';
 import { arrayMove, SortableContext, sortableKeyboardCoordinates, verticalListSortingStrategy, useSortable } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
-import { Star, Trash2, Calendar, GripVertical, Folder } from 'lucide-react';
+import { Star, Trash2, Calendar, Folder } from 'lucide-react';
 import { format } from 'date-fns';
 
 function SortableNoteItem({ note, category, onNoteClick, onDeleteNote, onToggleFavorite }) {
@@ -46,72 +46,61 @@ function SortableNoteItem({ note, category, onNoteClick, onDeleteNote, onToggleF
     <div
       ref={setNodeRef}
       style={style}
-      className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg p-4 hover:shadow-md transition-shadow group"
+      {...attributes}
+      {...listeners}
+      className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg p-4 hover:shadow-md transition-shadow cursor-grab active:cursor-grabbing group"
+      onClick={() => onNoteClick(note.id)}
     >
-      <div className="flex items-start gap-3">
-        {/* Drag handle */}
-        <div
-          {...attributes}
-          {...listeners}
-          className="opacity-0 group-hover:opacity-100 cursor-grab active:cursor-grabbing mt-1 flex-shrink-0"
-        >
-          <GripVertical className="w-5 h-5 text-gray-400" />
+      <div className="flex items-start justify-between mb-2">
+        <div className="flex-1 min-w-0">
+          <h3 className="text-base font-semibold text-gray-800 dark:text-gray-100 mb-1">
+            {note.title || 'Untitled'}
+          </h3>
+          <p className="text-sm text-gray-600 dark:text-gray-400 line-clamp-2">
+            {preview || 'No content'}
+          </p>
         </div>
 
-        {/* Content */}
-        <div className="flex-1 min-w-0 cursor-pointer" onClick={() => onNoteClick(note.id)}>
-          <div className="flex items-start justify-between mb-2">
-            <div className="flex-1">
-              <h3 className="text-base font-semibold text-gray-800 dark:text-gray-100 mb-1">
-                {note.title || 'Untitled'}
-              </h3>
-              <p className="text-sm text-gray-600 dark:text-gray-400 line-clamp-2">
-                {preview || 'No content'}
-              </p>
-            </div>
+        {/* Actions */}
+        <div className="flex items-center gap-1 ml-4 flex-shrink-0">
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              onToggleFavorite(note.id, note.is_favorite);
+            }}
+            className={`p-1.5 rounded hover:bg-gray-100 dark:hover:bg-gray-700 ${
+              note.is_favorite ? 'text-yellow-500' : 'text-gray-400'
+            }`}
+            title={note.is_favorite ? 'Remove from favorites' : 'Add to favorites'}
+          >
+            <Star className={`w-4 h-4 ${note.is_favorite ? 'fill-current' : ''}`} />
+          </button>
 
-            {/* Actions */}
-            <div className="flex items-center gap-1 ml-4 flex-shrink-0">
-              <button
-                onClick={(e) => {
-                  e.stopPropagation();
-                  onToggleFavorite(note.id, note.is_favorite);
-                }}
-                className={`p-1.5 rounded hover:bg-gray-100 dark:hover:bg-gray-700 ${
-                  note.is_favorite ? 'text-yellow-500' : 'text-gray-400'
-                }`}
-                title={note.is_favorite ? 'Remove from favorites' : 'Add to favorites'}
-              >
-                <Star className={`w-4 h-4 ${note.is_favorite ? 'fill-current' : ''}`} />
-              </button>
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              if (confirm('Are you sure you want to delete this note?')) {
+                onDeleteNote(note.id);
+              }
+            }}
+            className="p-1.5 rounded hover:bg-red-100 dark:hover:bg-red-900/20 text-red-600 dark:text-red-400"
+            title="Delete note"
+          >
+            <Trash2 className="w-4 h-4" />
+          </button>
+        </div>
+      </div>
 
-              <button
-                onClick={(e) => {
-                  e.stopPropagation();
-                  if (confirm('Are you sure you want to delete this note?')) {
-                    onDeleteNote(note.id);
-                  }
-                }}
-                className="p-1.5 rounded hover:bg-red-100 dark:hover:bg-red-900/20 text-red-600 dark:text-red-400"
-                title="Delete note"
-              >
-                <Trash2 className="w-4 h-4" />
-              </button>
-            </div>
+      {/* Metadata */}
+      <div className="flex items-center gap-3 text-xs text-gray-500 dark:text-gray-500">
+        {category && (
+          <div className="flex items-center gap-1">
+            <span>{category.icon && category.icon !== '🚫' && `${category.icon} `}{category.name}</span>
           </div>
-
-          {/* Metadata */}
-          <div className="flex items-center gap-3 text-xs text-gray-500 dark:text-gray-500">
-            {category && (
-              <div className="flex items-center gap-1">
-                <span>{category.icon && category.icon !== '⭕' && `${category.icon} `}{category.name}</span>
-              </div>
-            )}
-            <div className="flex items-center gap-1">
-              <Calendar className="w-3 h-3" />
-              {format(new Date(note.last_edited_at || note.created_at), 'MMM d, yyyy')}
-            </div>
-          </div>
+        )}
+        <div className="flex items-center gap-1">
+          <Calendar className="w-3 h-3" />
+          {format(new Date(note.last_edited_at || note.created_at), 'MMM d, yyyy')}
         </div>
       </div>
     </div>
