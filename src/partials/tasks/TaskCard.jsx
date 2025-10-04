@@ -2,12 +2,15 @@ import React, { useState, useRef, useEffect } from 'react';
 import { Draggable } from '@hello-pangea/dnd';
 import { X, Check, Calendar, Clock, Tag, MessageSquare, MoreHorizontal } from 'lucide-react';
 import { supabase } from '../../supabaseClient';
+import { useAuth } from '../../context/AuthContext';
 
 const TaskCard = ({ task, index, onUpdate, onDelete, onComplete, onKeyDown, isAddingTasks, onTaskClick, isSelected }) => {
     const [isEditing, setIsEditing] = useState(task.title === '');
     const [title, setTitle] = useState(task.title);
+    const [availableLabels, setAvailableLabels] = useState([]);
     const inputRef = useRef(null);
     const isNewTask = task.title === '';
+    const { user } = useAuth();
 
     useEffect(() => {
         if (isEditing && inputRef.current) {
@@ -32,6 +35,28 @@ const TaskCard = ({ task, index, onUpdate, onDelete, onComplete, onKeyDown, isAd
     useEffect(() => {
         setTitle(task.title);
     }, [task.title]);
+
+    // Fetch available labels for proper display
+    useEffect(() => {
+        if (user && task.labels && task.labels.length > 0) {
+            fetchLabels();
+        }
+    }, [user, task.labels]);
+
+    const fetchLabels = async () => {
+        try {
+            const { data, error } = await supabase
+                .from('task_labels')
+                .select('*')
+                .eq('user_id', user.id)
+                .in('id', task.labels);
+
+            if (error) throw error;
+            setAvailableLabels(data || []);
+        } catch (error) {
+            console.error('Error fetching labels:', error);
+        }
+    };
 
     const handleSave = async (newTitle) => {
         const trimmedTitle = newTitle.trim();
@@ -207,30 +232,6 @@ const TaskCard = ({ task, index, onUpdate, onDelete, onComplete, onKeyDown, isAd
         return 'text-gray-500'; // Normal
     };
 
-    // Helper function to get label color (Trello-style)
-    const getLabelColor = (label, index) => {
-        const colors = [
-            'bg-green-500',    // Green
-            'bg-yellow-500',   // Yellow  
-            'bg-orange-500',   // Orange
-            'bg-red-500',      // Red
-            'bg-purple-500',   // Purple
-            'bg-blue-500',     // Blue
-            'bg-pink-500',     // Pink
-            'bg-indigo-500',   // Indigo
-            'bg-teal-500',     // Teal
-            'bg-gray-500'      // Gray
-        ];
-        
-        // Generate a consistent color based on label text
-        let hash = 0;
-        for (let i = 0; i < label.length; i++) {
-            hash = label.charCodeAt(i) + ((hash << 5) - hash);
-        }
-        
-        const colorIndex = Math.abs(hash) % colors.length;
-        return colors[colorIndex];
-    };
 
     return (
         <Draggable draggableId={task.id.toString()} index={index}>
@@ -333,18 +334,19 @@ const TaskCard = ({ task, index, onUpdate, onDelete, onComplete, onKeyDown, isAd
                                 )}
 
                                 {/* Labels/Tags */}
-                                {task.labels && task.labels.length > 0 && (
+                                {availableLabels.length > 0 && (
                                     <div className="flex flex-wrap gap-1">
-                                        {task.labels.slice(0, 3).map((label, index) => (
+                                        {availableLabels.slice(0, 3).map((label) => (
                                             <span
-                                                key={index}
-                                                className={`inline-block w-8 h-3 rounded-sm ${getLabelColor(label, index)}`}
-                                                title={label}
+                                                key={label.id}
+                                                className="inline-block w-8 h-3 rounded-sm"
+                                                style={{ backgroundColor: label.color }}
+                                                title={label.name}
                                             />
                                         ))}
-                                        {task.labels.length > 3 && (
+                                        {availableLabels.length > 3 && (
                                             <span className="text-xs text-gray-500 dark:text-gray-400 self-center">
-                                                +{task.labels.length - 3}
+                                                +{availableLabels.length - 3}
                                             </span>
                                         )}
                                     </div>

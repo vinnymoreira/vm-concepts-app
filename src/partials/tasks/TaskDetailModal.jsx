@@ -2,6 +2,8 @@ import React, { useState, useEffect } from 'react';
 import { X, Calendar, Clock, Tag, MessageSquare, Plus, Trash2, Check, Edit3 } from 'lucide-react';
 import { supabase } from '../../supabaseClient';
 import { useAuth } from '../../context/AuthContext';
+import LabelSelector from './LabelSelector';
+import LabelManagementModal from './LabelManagementModal';
 
 const TaskDetailModal = ({ isOpen, onClose, task, onUpdate, onDelete }) => {
     const [isEditing, setIsEditing] = useState(false);
@@ -16,6 +18,8 @@ const TaskDetailModal = ({ isOpen, onClose, task, onUpdate, onDelete }) => {
     const [newChecklistItem, setNewChecklistItem] = useState('');
     const [loading, setLoading] = useState(false);
     const [editingField, setEditingField] = useState(null);
+    const [isLabelManagementOpen, setIsLabelManagementOpen] = useState(false);
+    const [availableLabels, setAvailableLabels] = useState([]);
     const { user } = useAuth();
 
     useEffect(() => {
@@ -29,8 +33,26 @@ const TaskDetailModal = ({ isOpen, onClose, task, onUpdate, onDelete }) => {
             });
             setChecklist(task.checklist || []);
             setEditingField(null);
+            fetchLabels();
         }
     }, [task, isOpen]);
+
+    const fetchLabels = async () => {
+        if (!user) return;
+
+        try {
+            const { data, error } = await supabase
+                .from('task_labels')
+                .select('*')
+                .eq('user_id', user.id)
+                .order('position', { ascending: true });
+
+            if (error) throw error;
+            setAvailableLabels(data || []);
+        } catch (error) {
+            console.error('Error fetching labels:', error);
+        }
+    };
 
     // Handle escape key and click outside
     useEffect(() => {
@@ -211,30 +233,6 @@ const TaskDetailModal = ({ isOpen, onClose, task, onUpdate, onDelete }) => {
         }));
     };
 
-    // Helper function to get label color (Trello-style) - same as TaskCard
-    const getLabelColor = (label, index) => {
-        const colors = [
-            'bg-green-500',    // Green
-            'bg-yellow-500',   // Yellow  
-            'bg-orange-500',   // Orange
-            'bg-red-500',      // Red
-            'bg-purple-500',   // Purple
-            'bg-blue-500',     // Blue
-            'bg-pink-500',     // Pink
-            'bg-indigo-500',   // Indigo
-            'bg-teal-500',     // Teal
-            'bg-gray-500'      // Gray
-        ];
-        
-        // Generate a consistent color based on label text
-        let hash = 0;
-        for (let i = 0; i < label.length; i++) {
-            hash = label.charCodeAt(i) + ((hash << 5) - hash);
-        }
-        
-        const colorIndex = Math.abs(hash) % colors.length;
-        return colors[colorIndex];
-    };
 
     const removeLabel = (labelToRemove) => {
         setFormData(prev => ({
@@ -374,9 +372,19 @@ const TaskDetailModal = ({ isOpen, onClose, task, onUpdate, onDelete }) => {
                                     className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-gray-100"
                                 />
                             ) : (
-                                <div 
+                                <div
                                     className="flex items-center gap-2 cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-700/50 rounded px-2 py-1 -mx-2 -my-1 transition-colors"
-                                    onClick={() => setEditingField('due_date')}
+                                    onClick={() => {
+                                        setEditingField('due_date');
+                                        // Auto-focus the date input after a small delay to ensure it's rendered
+                                        setTimeout(() => {
+                                            const dateInput = document.querySelector('input[type="date"]');
+                                            if (dateInput) {
+                                                dateInput.focus();
+                                                dateInput.showPicker?.(); // Show calendar picker if supported
+                                            }
+                                        }, 100);
+                                    }}
                                 >
                                     <Calendar className="w-4 h-4 text-gray-500" />
                                     <span className="text-gray-700 dark:text-gray-300">
@@ -431,42 +439,13 @@ const TaskDetailModal = ({ isOpen, onClose, task, onUpdate, onDelete }) => {
                         <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                             Labels
                         </label>
-                        <div className="flex flex-wrap gap-2 mb-2">
-                            {formData.labels.map((label, index) => (
-                                <span
-                                    key={index}
-                                    className={`inline-flex items-center gap-1 px-3 py-1 ${getLabelColor(label, index)} text-white text-xs rounded-full shadow-sm`}
-                                >
-                                    {label}
-                                    <button
-                                        onClick={() => {
-                                            const newLabels = formData.labels.filter(l => l !== label);
-                                            setFormData(prev => ({ ...prev, labels: newLabels }));
-                                            handleFieldSave('labels', newLabels);
-                                        }}
-                                        className="hover:bg-black/20 rounded-full p-0.5"
-                                    >
-                                        <X className="w-3 h-3" />
-                                    </button>
-                                </span>
-                            ))}
-                        </div>
-                        <input
-                            type="text"
-                            placeholder="Add label and press Enter"
-                            onKeyDown={(e) => {
-                                if (e.key === 'Enter') {
-                                    e.preventDefault();
-                                    const labelText = e.target.value.trim();
-                                    if (labelText && !formData.labels.includes(labelText)) {
-                                        const newLabels = [...formData.labels, labelText];
-                                        setFormData(prev => ({ ...prev, labels: newLabels }));
-                                        handleFieldSave('labels', newLabels);
-                                    }
-                                    e.target.value = '';
-                                }
+                        <LabelSelector
+                            selectedLabels={formData.labels}
+                            onLabelsChange={(newLabels) => {
+                                setFormData(prev => ({ ...prev, labels: newLabels }));
+                                handleFieldSave('labels', newLabels);
                             }}
-                            className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-gray-100"
+                            onManageLabels={() => setIsLabelManagementOpen(true)}
                         />
                     </div>
 
@@ -571,6 +550,13 @@ const TaskDetailModal = ({ isOpen, onClose, task, onUpdate, onDelete }) => {
                     </button>
                 </div>
             </div>
+
+            {/* Label Management Modal */}
+            <LabelManagementModal
+                isOpen={isLabelManagementOpen}
+                onClose={() => setIsLabelManagementOpen(false)}
+                onLabelsUpdate={fetchLabels}
+            />
         </div>
     );
 };

@@ -3,13 +3,15 @@ import Sidebar from '../partials/Sidebar';
 import Header from '../partials/Header';
 import TaskBoard from '../partials/tasks/TaskBoard';
 import DailyTasksModal from '../partials/tasks/DailyTasksModal';
-import { CirclePlus, Info } from 'lucide-react';
+import LabelManagementModal from '../partials/tasks/LabelManagementModal';
+import { CirclePlus, Info, Tag } from 'lucide-react';
 import { supabase } from '../supabaseClient';
 import { useAuth } from '../context/AuthContext';
 
 function Tasks() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [isDailyTasksModalOpen, setIsDailyTasksModalOpen] = useState(false);
+  const [isLabelManagementOpen, setIsLabelManagementOpen] = useState(false);
   const [taskBoardKey, setTaskBoardKey] = useState(0);
   const [notification, setNotification] = useState(null);
   const [isVisible, setIsVisible] = useState(false);
@@ -259,8 +261,15 @@ function Tasks() {
             </p>
             <div className="mb-8 flex justify-between">
               <h1 className="text-2xl md:text-3xl text-gray-800 dark:text-gray-100 font-bold">Tasks</h1>
-              <div className="flex items-center">
-                <button 
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={() => setIsLabelManagementOpen(true)}
+                  className="btn bg-gray-500 hover:bg-gray-600 text-white"
+                >
+                  <Tag className="w-4 h-4 mr-2" />
+                  <span>Manage Labels</span>
+                </button>
+                <button
                   onClick={handleAddDailyTasks}
                   className="btn bg-indigo-500 hover:bg-indigo-600 text-white"
                 >
@@ -289,9 +298,15 @@ function Tasks() {
         )}
       </div>
 
-      <DailyTasksModal 
+      <DailyTasksModal
         isOpen={isDailyTasksModalOpen}
         onClose={() => setIsDailyTasksModalOpen(false)}
+      />
+
+      <LabelManagementModal
+        isOpen={isLabelManagementOpen}
+        onClose={() => setIsLabelManagementOpen(false)}
+        onLabelsUpdate={() => setTaskBoardKey(prev => prev + 1)}
       />
     </div>
   );
