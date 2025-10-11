@@ -305,7 +305,10 @@ function Notes() {
           <Header sidebarOpen={sidebarOpen} setSidebarOpen={setSidebarOpen} />
           <main className="grow">
             <div className="px-4 sm:px-6 lg:px-8 py-8 w-full max-w-9xl mx-auto">
-              <div className="text-center">Loading...</div>
+              <div className="flex items-center justify-center">
+                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-violet-600"></div>
+                <span className="ml-2">Loading notes...</span>
+              </div>
             </div>
           </main>
         </div>

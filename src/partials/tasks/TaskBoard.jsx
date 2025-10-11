@@ -12,30 +12,22 @@ const TaskBoard = () => {
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
     const { user } = useAuth();
-    const [isVisible, setIsVisible] = useState(true);
     const [selectedTask, setSelectedTask] = useState(null);
     const [isDetailModalOpen, setIsDetailModalOpen] = useState(false);
     const [selectedTaskIndex, setSelectedTaskIndex] = useState(null);
     const [selectedColumnIndex, setSelectedColumnIndex] = useState(null);
     const [showKeyboardHelp, setShowKeyboardHelp] = useState(false);
 
-    useEffect(() => {
-        const handleVisibilityChange = () => {
-            setIsVisible(!document.hidden);
-        };
-
-        document.addEventListener('visibilitychange', handleVisibilityChange);
-        return () => document.removeEventListener('visibilitychange', handleVisibilityChange);
-    }, []);
+    // Use ref to track if initial fetch has been done to prevent unnecessary refetches
+    const hasFetchedRef = React.useRef(false);
 
     useEffect(() => {
-        if (user && isVisible) {
-            // Only fetch if the tab becomes visible AND we don't have data yet
-            if (!columns.length) {
-                fetchColumns();
-            }
+        // Only fetch once when user is available and we haven't fetched yet
+        if (user && !hasFetchedRef.current) {
+            hasFetchedRef.current = true;
+            fetchColumns();
         }
-    }, [user, isVisible]);
+    }, [user]);
 
 
     // Keyboard shortcuts
@@ -61,6 +53,10 @@ const TaskBoard = () => {
                     case '/': // Cmd+/: Show keyboard shortcuts help
                         e.preventDefault();
                         setShowKeyboardHelp(true);
+                        break;
+                    case 'r': // Cmd+R: Refresh board
+                        e.preventDefault();
+                        handleManualRefresh();
                         break;
                 }
                 return;
@@ -203,19 +199,24 @@ const TaskBoard = () => {
         return () => document.removeEventListener('keydown', handleKeyDown);
     }, [columns, selectedColumnIndex, selectedTaskIndex, isDetailModalOpen]);
 
-    const fetchColumns = async () => {
+    const fetchColumns = async (forceRefresh = false) => {
+        // Skip if already fetched and not forcing refresh
+        if (!forceRefresh && hasFetchedRef.current && columns.length > 0) {
+            return;
+        }
+
         try {
             setLoading(true);
-            
+
             // First fetch columns
             const { data: columnsData, error: columnsError } = await supabase
                 .from('task_columns')
                 .select('*')
-                .eq('user_id', user.id)  // Add this line
+                .eq('user_id', user.id)
                 .order('position_y, position_x');
 
             if (columnsError) {
-                console.error('Columns fetch error:', columnsError); // Debug log
+                console.error('Columns fetch error:', columnsError);
                 throw columnsError;
             }
 
@@ -223,14 +224,13 @@ const TaskBoard = () => {
             const { data: tasksData, error: tasksError } = await supabase
                 .from('tasks')
                 .select('*')
-                .eq('user_id', user.id)  // Add this line
+                .eq('user_id', user.id)
                 .order('position');
 
             if (tasksError) {
-                console.error('Tasks fetch error:', tasksError); // Debug log
+                console.error('Tasks fetch error:', tasksError);
                 throw tasksError;
             }
-
 
             const organizedColumns = columnsData.map(column => ({
                 ...column,
@@ -239,12 +239,18 @@ const TaskBoard = () => {
             }));
 
             setColumns(organizedColumns);
+            hasFetchedRef.current = true;
         } catch (err) {
             console.error('Error fetching board data:', err);
             setError(err.message);
         } finally {
             setLoading(false);
         }
+    };
+
+    // Manual refresh function
+    const handleManualRefresh = () => {
+        fetchColumns(true);
     };
 
     const handleTaskComplete = async (taskId, sourceColumnId, destColumnId, newPosition) => {
@@ -381,7 +387,7 @@ const TaskBoard = () => {
             }
         } catch (err) {
             console.error('Error updating positions:', err);
-            fetchColumns(); // Refresh the board on error
+            fetchColumns(true); // Force refresh the board on error
         }
     };
 
@@ -591,6 +597,12 @@ const TaskBoard = () => {
                         ref={provided.innerRef}
                         {...provided.droppableProps}
                         className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-6 gap-4 min-h-[200px]"
+                        onDoubleClick={(e) => {
+                            // Only trigger if clicking on the board itself (not a column or button)
+                            if (e.target === e.currentTarget || e.target.closest('.add-column-on-dblclick')) {
+                                handleAddColumn();
+                            }
+                        }}
                     >
                         {columns.map((column, index) => (
                             <Draggable 
@@ -726,6 +738,13 @@ const TaskBoard = () => {
                                             <div className="flex gap-1">
                                                 <kbd className="px-2 py-1 bg-gray-100 dark:bg-gray-700 rounded text-xs">⌘</kbd>
                                                 <kbd className="px-2 py-1 bg-gray-100 dark:bg-gray-700 rounded text-xs">K</kbd>
+                                            </div>
+                                        </div>
+                                        <div className="flex justify-between items-center">
+                                            <span className="text-gray-700 dark:text-gray-300">Refresh board</span>
+                                            <div className="flex gap-1">
+                                                <kbd className="px-2 py-1 bg-gray-100 dark:bg-gray-700 rounded text-xs">⌘</kbd>
+                                                <kbd className="px-2 py-1 bg-gray-100 dark:bg-gray-700 rounded text-xs">R</kbd>
                                             </div>
                                         </div>
                                     </div>

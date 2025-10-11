@@ -253,7 +253,7 @@ const TaskCard = ({ task, index, onUpdate, onDelete, onComplete, onKeyDown, isAd
                     {/* Task Content */}
                     <div className="px-3 py-2">
                         {/* Main Task Title */}
-                        <div className="flex items-start justify-between gap-2">
+                        <div className="flex items-center justify-between gap-2 min-w-0">
                             {isEditing ? (
                                 <input
                                     ref={inputRef}
@@ -262,7 +262,7 @@ const TaskCard = ({ task, index, onUpdate, onDelete, onComplete, onKeyDown, isAd
                                     onChange={(e) => setTitle(e.target.value)}
                                     onBlur={handleBlur}
                                     onKeyDown={handleKeyDown}
-                                    className="flex-grow bg-transparent border-none rounded-md h-8 px-2 outline-none focus:bg-gray-50 dark:focus:bg-gray-700/50 transition-colors duration-200 font-medium text-gray-900 dark:text-gray-100"
+                                    className="flex-1 min-w-0 bg-transparent border-none rounded-md h-8 px-2 outline-none focus:bg-gray-50 dark:focus:bg-gray-700/50 focus:ring-2 focus:ring-blue-500 transition-colors duration-200 font-medium text-gray-900 dark:text-gray-100"
                                     placeholder="Enter task title..."
                                 />
                             ) : (
@@ -284,7 +284,7 @@ const TaskCard = ({ task, index, onUpdate, onDelete, onComplete, onKeyDown, isAd
                             )}
                             
                             {/* Quick Actions */}
-                            <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity duration-200">
+                            <div className={`flex gap-1 flex-shrink-0 transition-opacity duration-200 ${isEditing ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'}`}>
                                 <button
                                     onClick={handleCompleteClick}
                                     className="complete-button p-1.5 hover:bg-green-100 dark:hover:bg-green-900/30 rounded-md transition-colors duration-200"

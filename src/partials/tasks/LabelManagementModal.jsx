@@ -31,6 +31,21 @@ const LabelManagementModal = ({ isOpen, onClose, onLabelsUpdate }) => {
         }
     }, [isOpen, user]);
 
+    // Handle Escape key to close modal
+    useEffect(() => {
+        const handleEscape = (e) => {
+            if (e.key === 'Escape' && isOpen) {
+                // Don't close if user is editing a label
+                if (!editingLabel) {
+                    onClose();
+                }
+            }
+        };
+
+        document.addEventListener('keydown', handleEscape);
+        return () => document.removeEventListener('keydown', handleEscape);
+    }, [isOpen, editingLabel, onClose]);
+
     const fetchLabels = async () => {
         try {
             setLoading(true);
@@ -133,7 +148,15 @@ const LabelManagementModal = ({ isOpen, onClose, onLabelsUpdate }) => {
     if (!isOpen) return null;
 
     return (
-        <div className="modal-overlay fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4">
+        <div
+            className="modal-overlay fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4"
+            onClick={(e) => {
+                // Close modal if clicking on the overlay (not the modal content)
+                if (e.target === e.currentTarget) {
+                    onClose();
+                }
+            }}
+        >
             <div className="bg-white dark:bg-gray-800 rounded-xl shadow-xl w-full max-w-2xl max-h-[90vh] overflow-hidden">
                 {/* Header */}
                 <div className="flex items-center justify-between p-6 border-b border-gray-200 dark:border-gray-700">
