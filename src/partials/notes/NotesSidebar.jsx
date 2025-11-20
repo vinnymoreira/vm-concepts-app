@@ -152,7 +152,7 @@ function NotesSidebar({
   };
 
   return (
-    <div className="w-64 flex-shrink-0">
+    <div className="w-full lg:w-64 flex-shrink-0">
       <div className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg p-4">
         {/* Categories */}
         <div>

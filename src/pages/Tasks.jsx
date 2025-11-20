@@ -259,22 +259,24 @@ function Tasks() {
             <p className="mb-2 text-gray-500 text-xs text-right italic">
               <a href="#" onClick={() => setIsDailyTasksModalOpen(true)}>Manage daily tasks</a>
             </p>
-            <div className="mb-8 flex justify-between">
-              <h1 className="text-2xl md:text-3xl text-gray-800 dark:text-gray-100 font-bold">Tasks</h1>
-              <div className="flex items-center gap-2">
+            <div className="mb-8">
+              <h1 className="text-2xl md:text-3xl text-gray-800 dark:text-gray-100 font-bold mb-4">Tasks</h1>
+              <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2">
                 <button
                   onClick={() => setIsLabelManagementOpen(true)}
-                  className="btn bg-gray-500 hover:bg-gray-600 text-white"
+                  className="btn bg-gray-500 hover:bg-gray-600 text-white justify-center"
                 >
-                  <Tag className="w-4 h-4 mr-2" />
-                  <span>Manage Labels</span>
+                  <Tag className="w-4 h-4 sm:mr-2" />
+                  <span className="hidden sm:inline">Manage Labels</span>
+                  <span className="sm:hidden">Labels</span>
                 </button>
                 <button
                   onClick={handleAddDailyTasks}
-                  className="btn bg-indigo-500 hover:bg-indigo-600 text-white"
+                  className="btn bg-indigo-500 hover:bg-indigo-600 text-white justify-center"
                 >
-                  <CirclePlus className="w-4 h-4 mr-2" />
-                  <span>Add daily tasks</span>
+                  <CirclePlus className="w-4 h-4 sm:mr-2" />
+                  <span className="hidden sm:inline">Add daily tasks</span>
+                  <span className="sm:hidden">Daily Tasks</span>
                 </button>
               </div>
             </div>

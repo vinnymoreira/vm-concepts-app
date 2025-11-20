@@ -666,38 +666,42 @@ function Fitness() {
                   </div>
                 )}
               </div>
-              <div className="flex space-x-2">
+              <div className="grid grid-cols-2 sm:flex sm:flex-row gap-2">
                 {goals.length > 1 && (
                   <button
                     onClick={() => setShowGoalComparison(true)}
-                    className="btn bg-purple-500 hover:bg-purple-600 text-white flex items-center"
+                    className="btn bg-purple-500 hover:bg-purple-600 text-white flex items-center justify-center"
                   >
-                    <TrendingUp className="w-4 h-4 mr-2" />
-                    Compare Goals
+                    <TrendingUp className="w-4 h-4 sm:mr-2" />
+                    <span className="hidden sm:inline">Compare Goals</span>
+                    <span className="sm:hidden ml-1">Compare</span>
                   </button>
                 )}
                 <button
                   onClick={() => setIsNewGoalModalOpen(true)}
-                  className="btn bg-emerald-500 hover:bg-emerald-600 text-white flex items-center"
+                  className="btn bg-emerald-500 hover:bg-emerald-600 text-white flex items-center justify-center"
                 >
-                  <Target className="w-4 h-4 mr-2" />
-                  New Goal
+                  <Target className="w-4 h-4 sm:mr-2" />
+                  <span className="hidden sm:inline">New Goal</span>
+                  <span className="sm:hidden ml-1">New</span>
                 </button>
                 {activeGoal && (
                   <>
                     <button
                       onClick={() => setIsEditGoalModalOpen(true)}
-                      className="btn bg-white hover:bg-gray-50 text-gray-800 border border-gray-300 hover:border-gray-400 flex items-center"
+                      className="btn bg-white dark:bg-gray-800 hover:bg-gray-50 dark:hover:bg-gray-700 text-gray-800 dark:text-gray-100 border border-gray-300 dark:border-gray-600 hover:border-gray-400 flex items-center justify-center"
                     >
-                      <Edit3 className="w-4 h-4 mr-2" />
-                      Edit Goal
+                      <Edit3 className="w-4 h-4 sm:mr-2" />
+                      <span className="hidden sm:inline">Edit Goal</span>
+                      <span className="sm:hidden ml-1">Edit</span>
                     </button>
                     <button
                       onClick={() => setIsLogModalOpen(true)}
-                      className="btn bg-indigo-500 hover:bg-indigo-600 text-white flex items-center"
+                      className="btn bg-indigo-500 hover:bg-indigo-600 text-white flex items-center justify-center"
                     >
-                      <Plus className="w-4 h-4 mr-2" />
-                      Log Weight
+                      <Plus className="w-4 h-4 sm:mr-2" />
+                      <span className="hidden sm:inline">Log Weight</span>
+                      <span className="sm:hidden ml-1">Log</span>
                     </button>
                   </>
                 )}

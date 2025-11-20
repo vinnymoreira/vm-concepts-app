@@ -40,6 +40,9 @@ const TaskCard = ({ task, index, onUpdate, onDelete, onComplete, onKeyDown, isAd
     useEffect(() => {
         if (user && task.labels && task.labels.length > 0) {
             fetchLabels();
+        } else {
+            // Clear labels when there are none
+            setAvailableLabels([]);
         }
     }, [user, task.labels]);
 
@@ -251,7 +254,7 @@ const TaskCard = ({ task, index, onUpdate, onDelete, onComplete, onKeyDown, isAd
                         cursor-pointer`}
                 >
                     {/* Task Content */}
-                    <div className="px-3 py-2">
+                    <div className="px-2 py-2.5">
                         {/* Main Task Title */}
                         <div className="flex items-center justify-between gap-2 min-w-0">
                             {isEditing ? (
@@ -284,22 +287,24 @@ const TaskCard = ({ task, index, onUpdate, onDelete, onComplete, onKeyDown, isAd
                             )}
                             
                             {/* Quick Actions */}
-                            <div className={`flex gap-1 flex-shrink-0 transition-opacity duration-200 ${isEditing ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'}`}>
-                                <button
-                                    onClick={handleCompleteClick}
-                                    className="complete-button p-1.5 hover:bg-green-100 dark:hover:bg-green-900/30 rounded-md transition-colors duration-200"
-                                    title="Mark as complete"
-                                >
-                                    <Check className="w-3.5 h-3.5 text-green-600 dark:text-green-400" />
-                                </button>
-                                <button
-                                    onClick={handleDeleteClick}
-                                    className="delete-button p-1.5 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-md transition-colors duration-200"
-                                    title="Delete task"
-                                >
-                                    <X className="w-3.5 h-3.5 text-gray-500 dark:text-gray-400" />
-                                </button>
-                            </div>
+                            {!isNewTask && (
+                                <div className={`flex gap-1 flex-shrink-0 transition-opacity duration-200 ${isEditing ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'}`}>
+                                    <button
+                                        onClick={handleCompleteClick}
+                                        className="complete-button p-0.5 hover:bg-green-100 dark:hover:bg-green-900/30 rounded-md transition-colors duration-200"
+                                        title="Mark as complete"
+                                    >
+                                        <Check className="w-4 h-4 text-green-600 dark:text-green-400" />
+                                    </button>
+                                    <button
+                                        onClick={handleDeleteClick}
+                                        className="delete-button p-0.5 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-md transition-colors duration-200"
+                                        title="Delete task"
+                                    >
+                                        <X className="w-4 h-4 text-gray-500 dark:text-gray-400" />
+                                    </button>
+                                </div>
+                            )}
                         </div>
 
                         {/* Task Description (if available) */}

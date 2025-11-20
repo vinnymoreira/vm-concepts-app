@@ -3,18 +3,21 @@ import { X, Plus, Tag, Settings } from 'lucide-react';
 import { supabase } from '../../supabaseClient';
 import { useAuth } from '../../context/AuthContext';
 
-const LabelSelector = ({ selectedLabels = [], onLabelsChange, onManageLabels }) => {
+const LabelSelector = ({ selectedLabels = [], onLabelsChange, onManageLabels, showKeyboardShortcuts = false, availableLabels: externalLabels }) => {
     const [availableLabels, setAvailableLabels] = useState([]);
     const [isOpen, setIsOpen] = useState(false);
     const [searchTerm, setSearchTerm] = useState('');
     const { user } = useAuth();
     const dropdownRef = useRef(null);
 
+    // Use external labels if provided, otherwise fetch them
+    const labels = externalLabels || availableLabels;
+
     useEffect(() => {
-        if (user) {
+        if (user && !externalLabels) {
             fetchLabels();
         }
-    }, [user]);
+    }, [user, externalLabels]);
 
     useEffect(() => {
         const handleClickOutside = (event) => {
@@ -56,12 +59,12 @@ const LabelSelector = ({ selectedLabels = [], onLabelsChange, onManageLabels }) 
         onLabelsChange(selectedLabels.filter(id => id !== labelId));
     };
 
-    const filteredLabels = availableLabels.filter(label =>
+    const filteredLabels = labels.filter(label =>
         label.name.toLowerCase().includes(searchTerm.toLowerCase())
     );
 
     const getSelectedLabelObjects = () => {
-        return availableLabels.filter(label => selectedLabels.includes(label.id));
+        return labels.filter(label => selectedLabels.includes(label.id));
     };
 
     const getUnselectedLabels = () => {
@@ -72,21 +75,31 @@ const LabelSelector = ({ selectedLabels = [], onLabelsChange, onManageLabels }) 
         <div className="relative" ref={dropdownRef}>
             {/* Selected Labels Display */}
             <div className="flex flex-wrap gap-2 mb-2">
-                {getSelectedLabelObjects().map((label) => (
-                    <span
-                        key={label.id}
-                        className="inline-flex items-center gap-1 px-3 py-1 text-white text-xs rounded-full shadow-sm"
-                        style={{ backgroundColor: label.color }}
-                    >
-                        {label.name}
-                        <button
-                            onClick={() => removeLabel(label.id)}
-                            className="hover:bg-black/20 rounded-full p-0.5"
+                {getSelectedLabelObjects().map((label) => {
+                    const labelIndex = labels.findIndex(l => l.id === label.id);
+                    const shortcutKey = labelIndex >= 0 && labelIndex < 9 ? labelIndex + 1 : null;
+
+                    return (
+                        <span
+                            key={label.id}
+                            className="inline-flex items-center gap-1 px-3 py-1 text-white text-xs rounded-full shadow-sm"
+                            style={{ backgroundColor: label.color }}
                         >
-                            <X className="w-3 h-3" />
-                        </button>
-                    </span>
-                ))}
+                            {showKeyboardShortcuts && shortcutKey && (
+                                <span className="bg-black/20 px-1.5 py-0.5 rounded text-[10px] font-semibold mr-1">
+                                    {shortcutKey}
+                                </span>
+                            )}
+                            {label.name}
+                            <button
+                                onClick={() => removeLabel(label.id)}
+                                className="hover:bg-black/20 rounded-full p-0.5"
+                            >
+                                <X className="w-3 h-3" />
+                            </button>
+                        </span>
+                    );
+                })}
             </div>
 
             {/* Add Label Button */}
@@ -129,7 +142,7 @@ const LabelSelector = ({ selectedLabels = [], onLabelsChange, onManageLabels }) 
                     <div className="max-h-48 overflow-y-auto">
                         {getUnselectedLabels().length === 0 ? (
                             <div className="p-3 text-sm text-gray-500 dark:text-gray-400 text-center">
-                                {availableLabels.length === 0 ? (
+                                {labels.length === 0 ? (
                                     <>
                                         <div className="mb-2">No labels available</div>
                                         {onManageLabels && (
@@ -150,30 +163,40 @@ const LabelSelector = ({ selectedLabels = [], onLabelsChange, onManageLabels }) 
                             </div>
                         ) : (
                             <div className="py-1">
-                                {getUnselectedLabels().map((label) => (
-                                    <button
-                                        key={label.id}
-                                        onClick={() => {
-                                            toggleLabel(label.id);
-                                            setSearchTerm('');
-                                        }}
-                                        className="w-full flex items-center gap-3 px-3 py-2 text-sm text-left hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors"
-                                    >
-                                        <div
-                                            className="w-4 h-4 rounded-full border border-gray-200 dark:border-gray-600"
-                                            style={{ backgroundColor: label.color }}
-                                        />
-                                        <span className="text-gray-900 dark:text-gray-100">
-                                            {label.name}
-                                        </span>
-                                    </button>
-                                ))}
+                                {getUnselectedLabels().map((label) => {
+                                    const labelIndex = labels.findIndex(l => l.id === label.id);
+                                    const shortcutKey = labelIndex >= 0 && labelIndex < 9 ? labelIndex + 1 : null;
+
+                                    return (
+                                        <button
+                                            key={label.id}
+                                            onClick={() => {
+                                                toggleLabel(label.id);
+                                                setSearchTerm('');
+                                            }}
+                                            className="w-full flex items-center gap-3 px-3 py-2 text-sm text-left hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors"
+                                        >
+                                            {showKeyboardShortcuts && shortcutKey && (
+                                                <span className="text-xs font-semibold text-gray-500 dark:text-gray-400 min-w-[16px]">
+                                                    {shortcutKey}
+                                                </span>
+                                            )}
+                                            <div
+                                                className="w-4 h-4 rounded-full border border-gray-200 dark:border-gray-600"
+                                                style={{ backgroundColor: label.color }}
+                                            />
+                                            <span className="text-gray-900 dark:text-gray-100">
+                                                {label.name}
+                                            </span>
+                                        </button>
+                                    );
+                                })}
                             </div>
                         )}
                     </div>
 
                     {/* Manage Labels Link */}
-                    {onManageLabels && availableLabels.length > 0 && (
+                    {onManageLabels && labels.length > 0 && (
                         <div className="border-t border-gray-200 dark:border-gray-700 p-2">
                             <button
                                 onClick={() => {

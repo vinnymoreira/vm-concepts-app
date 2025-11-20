@@ -26,6 +26,7 @@ function Notes() {
   const [isImportModalOpen, setIsImportModalOpen] = useState(false);
   const [viewMode, setViewMode] = useState('all'); // 'all', 'favorites'
   const [displayMode, setDisplayMode] = useState('list'); // 'list', 'grid'
+  const [categoriesSidebarOpen, setCategoriesSidebarOpen] = useState(false);
 
   // Debug: Log viewMode changes
   useEffect(() => {
@@ -366,23 +367,42 @@ function Notes() {
               </div>
             )}
 
-            <div className="flex gap-6">
-              {/* Notes Sidebar (Categories) */}
-              <NotesSidebar
-                categories={categories}
-                selectedCategory={selectedCategory}
-                onCategorySelect={handleCategorySelect}
-                onAddCategory={() => setIsAddCategoryModalOpen(true)}
-                onEditCategory={handleEditCategory}
-                viewMode={viewMode}
-                onViewModeChange={setViewMode}
-                onCategoriesChange={fetchCategories}
-              />
+            <div className="flex flex-col lg:flex-row gap-6">
+              {/* Notes Sidebar (Categories) - Hidden on mobile, toggleable */}
+              <div className={`${categoriesSidebarOpen ? 'block' : 'hidden'} lg:block`}>
+                <NotesSidebar
+                  categories={categories}
+                  selectedCategory={selectedCategory}
+                  onCategorySelect={(categoryId) => {
+                    handleCategorySelect(categoryId);
+                    setCategoriesSidebarOpen(false); // Close on mobile after selection
+                  }}
+                  onAddCategory={() => setIsAddCategoryModalOpen(true)}
+                  onEditCategory={handleEditCategory}
+                  viewMode={viewMode}
+                  onViewModeChange={(mode) => {
+                    setViewMode(mode);
+                    setCategoriesSidebarOpen(false); // Close on mobile after selection
+                  }}
+                  onCategoriesChange={fetchCategories}
+                />
+              </div>
 
               {/* Main content */}
-              <div className="flex-1">
+              <div className="flex-1 min-w-0">
+                {/* Mobile categories toggle button */}
+                <button
+                  onClick={() => setCategoriesSidebarOpen(!categoriesSidebarOpen)}
+                  className="lg:hidden mb-4 w-full flex items-center justify-center gap-2 px-4 py-2 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700"
+                >
+                  <Folder className="w-4 h-4" />
+                  <span className="text-sm font-medium">
+                    {categoriesSidebarOpen ? 'Hide Categories' : 'Show Categories'}
+                  </span>
+                </button>
+
                 {/* Search bar and view toggle */}
-                <div className="mb-6 flex gap-3">
+                <div className="mb-6 flex flex-col sm:flex-row gap-3">
                   <div className="relative flex-1">
                     <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400" />
                     <input

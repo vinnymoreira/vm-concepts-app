@@ -494,29 +494,29 @@ function Habits() {
         <main className="flex-1 overflow-y-auto">
           <div className="px-4 sm:px-6 lg:px-8 py-8">
             <div className="mb-8">
-              <div className="sm:flex sm:justify-between sm:items-center mb-6">
-                <div className="mb-4 sm:mb-0">
+              <div className="mb-6">
+                <div className="mb-4">
                   <h1 className="text-2xl md:text-3xl text-gray-800 dark:text-gray-100 font-bold">My Habits</h1>
                   <p className="text-gray-600 dark:text-gray-400 mt-1">
                     {filteredHabits.length} of {habits.length} {habits.length === 1 ? 'habit' : 'habits'}
                   </p>
                 </div>
-                <div className="flex space-x-3">
+                <div className="flex flex-col sm:flex-row gap-2">
                   <button
                     onClick={handleExportCSV}
                     disabled={habits.length === 0}
-                    className="btn bg-gray-500 hover:bg-gray-600 text-white shadow-lg hover:shadow-xl transition-all duration-200 transform hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none"
+                    className="btn bg-gray-500 hover:bg-gray-600 text-white shadow-lg hover:shadow-xl transition-all duration-200 transform hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none justify-center"
                     title="Export habits data to CSV"
                   >
-                    <Download className="w-4 h-4 mr-2" />
-                    <span>Export</span>
+                    <Download className="w-4 h-4 sm:mr-2" />
+                    <span className="ml-2 sm:ml-0">Export</span>
                   </button>
                   <button
                     onClick={() => setIsAddModalOpen(true)}
-                    className="btn bg-indigo-500 hover:bg-indigo-600 text-white shadow-lg hover:shadow-xl transition-all duration-200 transform hover:scale-105"
+                    className="btn bg-indigo-500 hover:bg-indigo-600 text-white shadow-lg hover:shadow-xl transition-all duration-200 transform hover:scale-105 justify-center"
                   >
-                    <Plus className="w-4 h-4 mr-2" />
-                    <span>Add Habit</span>
+                    <Plus className="w-4 h-4 sm:mr-2" />
+                    <span className="ml-2 sm:ml-0">Add Habit</span>
                   </button>
                 </div>
               </div>

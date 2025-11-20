@@ -17,6 +17,7 @@ const TaskBoard = () => {
     const [selectedTaskIndex, setSelectedTaskIndex] = useState(null);
     const [selectedColumnIndex, setSelectedColumnIndex] = useState(null);
     const [showKeyboardHelp, setShowKeyboardHelp] = useState(false);
+    const [availableLabels, setAvailableLabels] = useState([]);
 
     // Use ref to track if initial fetch has been done to prevent unnecessary refetches
     const hasFetchedRef = React.useRef(false);
@@ -26,8 +27,26 @@ const TaskBoard = () => {
         if (user && !hasFetchedRef.current) {
             hasFetchedRef.current = true;
             fetchColumns();
+            fetchLabels();
         }
     }, [user]);
+
+    const fetchLabels = async () => {
+        if (!user) return;
+
+        try {
+            const { data, error } = await supabase
+                .from('task_labels')
+                .select('*')
+                .eq('user_id', user.id)
+                .order('position', { ascending: true });
+
+            if (error) throw error;
+            setAvailableLabels(data || []);
+        } catch (error) {
+            console.error('Error fetching labels:', error);
+        }
+    };
 
 
     // Keyboard shortcuts
@@ -58,6 +77,20 @@ const TaskBoard = () => {
                         e.preventDefault();
                         handleManualRefresh();
                         break;
+                }
+                return;
+            }
+
+            // Number keys (1-9) for label shortcuts when a task is selected
+            if (e.key >= '1' && e.key <= '9') {
+                e.preventDefault();
+                if (selectedTaskIndex !== null && columns[selectedColumnIndex]?.tasks[selectedTaskIndex]) {
+                    const labelIndex = parseInt(e.key) - 1;
+                    if (labelIndex < availableLabels.length) {
+                        const task = columns[selectedColumnIndex].tasks[selectedTaskIndex];
+                        const label = availableLabels[labelIndex];
+                        handleToggleLabelOnTask(task, label.id);
+                    }
                 }
                 return;
             }
@@ -197,7 +230,7 @@ const TaskBoard = () => {
 
         document.addEventListener('keydown', handleKeyDown);
         return () => document.removeEventListener('keydown', handleKeyDown);
-    }, [columns, selectedColumnIndex, selectedTaskIndex, isDetailModalOpen]);
+    }, [columns, selectedColumnIndex, selectedTaskIndex, isDetailModalOpen, availableLabels]);
 
     const fetchColumns = async (forceRefresh = false) => {
         // Skip if already fetched and not forcing refresh
@@ -572,6 +605,37 @@ const TaskBoard = () => {
         // We'll pass this function down to enable keyboard-triggered inline editing
     };
 
+    const handleToggleLabelOnTask = async (task, labelId) => {
+        if (!task || !user) return;
+
+        try {
+            const isLabelSelected = task.labels && task.labels.includes(labelId);
+            const newLabels = isLabelSelected
+                ? task.labels.filter(id => id !== labelId)
+                : [...(task.labels || []), labelId];
+
+            const { data, error } = await supabase
+                .from('tasks')
+                .update({ labels: newLabels })
+                .eq('id', task.id)
+                .eq('user_id', user.id)
+                .select()
+                .single();
+
+            if (error) throw error;
+
+            // Update the task in the columns state using functional update to avoid stale state
+            setColumns(prevColumns => prevColumns.map(col => ({
+                ...col,
+                tasks: col.tasks.map(t =>
+                    t.id === task.id ? data : t
+                )
+            })));
+        } catch (error) {
+            console.error('Error toggling label on task:', error);
+        }
+    };
+
     if (!user) {
         return <div className="flex items-center justify-center p-4">Please log in to view your tasks.</div>;
     }
@@ -596,7 +660,7 @@ const TaskBoard = () => {
                     <div
                         ref={provided.innerRef}
                         {...provided.droppableProps}
-                        className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-6 gap-4 min-h-[200px]"
+                        className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-5 3xl:grid-cols-6 gap-4 min-h-[200px]"
                         onDoubleClick={(e) => {
                             // Only trigger if clicking on the board itself (not a column or button)
                             if (e.target === e.currentTarget || e.target.closest('.add-column-on-dblclick')) {
@@ -721,6 +785,10 @@ const TaskBoard = () => {
                                             <span className="text-gray-700 dark:text-gray-300">Edit selected task title</span>
                                             <kbd className="px-2 py-1 bg-gray-100 dark:bg-gray-700 rounded text-xs">E</kbd>
                                         </div>
+                                        <div className="flex justify-between items-center">
+                                            <span className="text-gray-700 dark:text-gray-300">Toggle labels on selected task</span>
+                                            <kbd className="px-2 py-1 bg-gray-100 dark:bg-gray-700 rounded text-xs">1-9</kbd>
+                                        </div>
                                     </div>
                                 </div>
 
@@ -770,6 +838,10 @@ const TaskBoard = () => {
                                         <div className="flex justify-between items-center">
                                             <span className="text-gray-700 dark:text-gray-300">Edit priority</span>
                                             <kbd className="px-2 py-1 bg-gray-100 dark:bg-gray-700 rounded text-xs">P</kbd>
+                                        </div>
+                                        <div className="flex justify-between items-center">
+                                            <span className="text-gray-700 dark:text-gray-300">Toggle labels</span>
+                                            <kbd className="px-2 py-1 bg-gray-100 dark:bg-gray-700 rounded text-xs">1-9</kbd>
                                         </div>
                                         <div className="flex justify-between items-center">
                                             <span className="text-gray-700 dark:text-gray-300">Delete task</span>

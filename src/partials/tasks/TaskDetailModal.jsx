@@ -74,6 +74,17 @@ const TaskDetailModal = ({ isOpen, onClose, task, onUpdate, onDelete }) => {
                 return;
             }
 
+            // Number keys (1-9) for label shortcuts
+            if (e.key >= '1' && e.key <= '9') {
+                e.preventDefault();
+                const labelIndex = parseInt(e.key) - 1;
+                if (labelIndex < availableLabels.length) {
+                    const label = availableLabels[labelIndex];
+                    toggleLabel(label.id);
+                }
+                return;
+            }
+
             // Modal-specific shortcuts
             switch (e.key) {
                 case 'e': // E: Edit title
@@ -115,7 +126,7 @@ const TaskDetailModal = ({ isOpen, onClose, task, onUpdate, onDelete }) => {
             document.removeEventListener('keydown', handleKeyDown);
             document.removeEventListener('click', handleClickOutside);
         };
-    }, [isOpen, onClose, editingField]);
+    }, [isOpen, onClose, editingField, availableLabels, formData.labels]);
 
     const handleSave = async () => {
         if (!task || !user) return;
@@ -239,6 +250,19 @@ const TaskDetailModal = ({ isOpen, onClose, task, onUpdate, onDelete }) => {
             ...prev,
             labels: prev.labels.filter(label => label !== labelToRemove)
         }));
+    };
+
+    const toggleLabel = (labelId) => {
+        const isLabelSelected = formData.labels.includes(labelId);
+        const newLabels = isLabelSelected
+            ? formData.labels.filter(id => id !== labelId)
+            : [...formData.labels, labelId];
+
+        setFormData(prev => ({
+            ...prev,
+            labels: newLabels
+        }));
+        handleFieldSave('labels', newLabels);
     };
 
     const formatDueDate = (dueDate) => {
@@ -446,7 +470,14 @@ const TaskDetailModal = ({ isOpen, onClose, task, onUpdate, onDelete }) => {
                                 handleFieldSave('labels', newLabels);
                             }}
                             onManageLabels={() => setIsLabelManagementOpen(true)}
+                            showKeyboardShortcuts={true}
+                            availableLabels={availableLabels}
                         />
+                        {availableLabels.length > 0 && (
+                            <p className="text-xs text-gray-500 dark:text-gray-400 mt-2">
+                                Press 1-9 to quickly toggle labels
+                            </p>
+                        )}
                     </div>
 
                     {/* Checklist */}

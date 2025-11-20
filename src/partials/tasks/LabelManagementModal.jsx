@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { X, Plus, Edit3, Trash2, Check, Palette } from 'lucide-react';
+import { X, Plus, Edit3, Trash2, Check, Palette, GripVertical } from 'lucide-react';
+import { DragDropContext, Droppable, Draggable } from '@hello-pangea/dnd';
 import { supabase } from '../../supabaseClient';
 import { useAuth } from '../../context/AuthContext';
 
@@ -145,6 +146,44 @@ const LabelManagementModal = ({ isOpen, onClose, onLabelsUpdate }) => {
         }
     };
 
+    const handleDragEnd = async (result) => {
+        if (!result.destination) return;
+
+        const { source, destination } = result;
+        if (source.index === destination.index) return;
+
+        // Reorder labels array
+        const reorderedLabels = Array.from(labels);
+        const [movedLabel] = reorderedLabels.splice(source.index, 1);
+        reorderedLabels.splice(destination.index, 0, movedLabel);
+
+        // Update state immediately for smooth UX
+        setLabels(reorderedLabels);
+
+        // Update positions in database
+        try {
+            const updates = reorderedLabels.map((label, index) => ({
+                id: label.id,
+                position: index
+            }));
+
+            // Update all positions
+            for (const update of updates) {
+                await supabase
+                    .from('task_labels')
+                    .update({ position: update.position })
+                    .eq('id', update.id)
+                    .eq('user_id', user.id);
+            }
+
+            onLabelsUpdate?.();
+        } catch (error) {
+            console.error('Error updating label positions:', error);
+            // Revert on error
+            fetchLabels();
+        }
+    };
+
     if (!isOpen) return null;
 
     return (
@@ -258,81 +297,112 @@ const LabelManagementModal = ({ isOpen, onClose, onLabelsUpdate }) => {
                                 <p className="text-sm">Create your first label above or use default labels.</p>
                             </div>
                         ) : (
-                            <div className="space-y-2">
-                                {labels.map((label) => (
-                                    <div
-                                        key={label.id}
-                                        className="flex items-center gap-3 p-3 bg-gray-50 dark:bg-gray-700/50 rounded-lg"
-                                    >
-                                        {editingLabel?.id === label.id ? (
-                                            <>
-                                                <input
-                                                    type="color"
-                                                    value={editingLabel.color}
-                                                    onChange={(e) => setEditingLabel(prev => ({ ...prev, color: e.target.value }))}
-                                                    className="w-8 h-8 border border-gray-300 dark:border-gray-600 rounded cursor-pointer"
-                                                />
-                                                <input
-                                                    type="text"
-                                                    value={editingLabel.name}
-                                                    onChange={(e) => setEditingLabel(prev => ({ ...prev, name: e.target.value }))}
-                                                    onKeyDown={(e) => {
-                                                        if (e.key === 'Enter') {
-                                                            updateLabel(label.id, editingLabel);
-                                                        } else if (e.key === 'Escape') {
-                                                            setEditingLabel(null);
-                                                        }
-                                                    }}
-                                                    className="flex-grow px-3 py-1 text-sm border border-gray-300 dark:border-gray-600 rounded focus:ring-2 focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-gray-100"
-                                                    autoFocus
-                                                />
-                                                <div className="flex gap-1">
-                                                    <button
-                                                        onClick={() => updateLabel(label.id, editingLabel)}
-                                                        className="p-1.5 text-green-600 hover:bg-green-100 dark:hover:bg-green-900/30 rounded transition-colors"
-                                                        title="Save"
-                                                    >
-                                                        <Check className="w-4 h-4" />
-                                                    </button>
-                                                    <button
-                                                        onClick={() => setEditingLabel(null)}
-                                                        className="p-1.5 text-gray-500 hover:bg-gray-100 dark:hover:bg-gray-600 rounded transition-colors"
-                                                        title="Cancel"
-                                                    >
-                                                        <X className="w-4 h-4" />
-                                                    </button>
-                                                </div>
-                                            </>
-                                        ) : (
-                                            <>
-                                                <div
-                                                    className="w-8 h-8 rounded-full border border-gray-200 dark:border-gray-600"
-                                                    style={{ backgroundColor: label.color }}
-                                                />
-                                                <span className="flex-grow text-gray-900 dark:text-gray-100 font-medium">
-                                                    {label.name}
-                                                </span>
-                                                <div className="flex gap-1">
-                                                    <button
-                                                        onClick={() => setEditingLabel({ id: label.id, name: label.name, color: label.color })}
-                                                        className="p-1.5 text-blue-600 hover:bg-blue-100 dark:hover:bg-blue-900/30 rounded transition-colors"
-                                                        title="Edit"
-                                                    >
-                                                        <Edit3 className="w-4 h-4" />
-                                                    </button>
-                                                    <button
-                                                        onClick={() => deleteLabel(label.id)}
-                                                        className="p-1.5 text-red-600 hover:bg-red-100 dark:hover:bg-red-900/30 rounded transition-colors"
-                                                        title="Delete"
-                                                    >
-                                                        <Trash2 className="w-4 h-4" />
-                                                    </button>
-                                                </div>
-                                            </>
-                                        )}
-                                    </div>
-                                ))}
-                            </div>
+                            <DragDropContext onDragEnd={handleDragEnd}>
+                                <Droppable droppableId="labels-list">
+                                    {(provided) => (
+                                        <div
+                                            className="space-y-2"
+                                            ref={provided.innerRef}
+                                            {...provided.droppableProps}
+                                        >
+                                            {labels.map((label, index) => (
+                                                <Draggable
+                                                    key={label.id}
+                                                    draggableId={label.id.toString()}
+                                                    index={index}
+                                                    isDragDisabled={editingLabel?.id === label.id}
+                                                >
+                                                    {(provided, snapshot) => (
+                                                        <div
+                                                            ref={provided.innerRef}
+                                                            {...provided.draggableProps}
+                                                            className={`flex items-center gap-3 p-3 bg-gray-50 dark:bg-gray-700/50 rounded-lg ${
+                                                                snapshot.isDragging ? 'shadow-lg scale-105' : ''
+                                                            }`}
+                                                        >
+                                                            <div {...provided.dragHandleProps} className="cursor-grab active:cursor-grabbing">
+                                                                <GripVertical className="w-4 h-4 text-gray-400" />
+                                                            </div>
+                                                            <div className="flex items-center gap-1 min-w-[24px]">
+                                                                <span className="text-xs font-medium text-gray-500 dark:text-gray-400">
+                                                                    {index + 1}
+                                                                </span>
+                                                            </div>
+                                                            {editingLabel?.id === label.id ? (
+                                                                <>
+                                                                    <input
+                                                                        type="color"
+                                                                        value={editingLabel.color}
+                                                                        onChange={(e) => setEditingLabel(prev => ({ ...prev, color: e.target.value }))}
+                                                                        className="w-8 h-8 border border-gray-300 dark:border-gray-600 rounded cursor-pointer"
+                                                                    />
+                                                                    <input
+                                                                        type="text"
+                                                                        value={editingLabel.name}
+                                                                        onChange={(e) => setEditingLabel(prev => ({ ...prev, name: e.target.value }))}
+                                                                        onKeyDown={(e) => {
+                                                                            if (e.key === 'Enter') {
+                                                                                updateLabel(label.id, editingLabel);
+                                                                            } else if (e.key === 'Escape') {
+                                                                                setEditingLabel(null);
+                                                                            }
+                                                                        }}
+                                                                        className="flex-grow px-3 py-1 text-sm border border-gray-300 dark:border-gray-600 rounded focus:ring-2 focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-gray-100"
+                                                                        autoFocus
+                                                                    />
+                                                                    <div className="flex gap-1">
+                                                                        <button
+                                                                            onClick={() => updateLabel(label.id, editingLabel)}
+                                                                            className="p-1.5 text-green-600 hover:bg-green-100 dark:hover:bg-green-900/30 rounded transition-colors"
+                                                                            title="Save"
+                                                                        >
+                                                                            <Check className="w-4 h-4" />
+                                                                        </button>
+                                                                        <button
+                                                                            onClick={() => setEditingLabel(null)}
+                                                                            className="p-1.5 text-gray-500 hover:bg-gray-100 dark:hover:bg-gray-600 rounded transition-colors"
+                                                                            title="Cancel"
+                                                                        >
+                                                                            <X className="w-4 h-4" />
+                                                                        </button>
+                                                                    </div>
+                                                                </>
+                                                            ) : (
+                                                                <>
+                                                                    <div
+                                                                        className="w-8 h-8 rounded-full border border-gray-200 dark:border-gray-600"
+                                                                        style={{ backgroundColor: label.color }}
+                                                                    />
+                                                                    <span className="flex-grow text-gray-900 dark:text-gray-100 font-medium">
+                                                                        {label.name}
+                                                                    </span>
+                                                                    <div className="flex gap-1">
+                                                                        <button
+                                                                            onClick={() => setEditingLabel({ id: label.id, name: label.name, color: label.color })}
+                                                                            className="p-1.5 text-blue-600 hover:bg-blue-100 dark:hover:bg-blue-900/30 rounded transition-colors"
+                                                                            title="Edit"
+                                                                        >
+                                                                            <Edit3 className="w-4 h-4" />
+                                                                        </button>
+                                                                        <button
+                                                                            onClick={() => deleteLabel(label.id)}
+                                                                            className="p-1.5 text-red-600 hover:bg-red-100 dark:hover:bg-red-900/30 rounded transition-colors"
+                                                                            title="Delete"
+                                                                        >
+                                                                            <Trash2 className="w-4 h-4" />
+                                                                        </button>
+                                                                    </div>
+                                                                </>
+                                                            )}
+                                                        </div>
+                                                    )}
+                                                </Draggable>
+                                            ))}
+                                            {provided.placeholder}
+                                        </div>
+                                    )}
+                                </Droppable>
+                            </DragDropContext>
                         )}
                     </div>
                 </div>
