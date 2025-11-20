@@ -255,6 +255,25 @@ const TaskCard = ({ task, index, onUpdate, onDelete, onComplete, onKeyDown, isAd
                 >
                     {/* Task Content */}
                     <div className="px-2 py-2.5">
+                        {/* Labels/Tags - Moved to top */}
+                        {availableLabels.length > 0 && (
+                            <div className="flex flex-wrap gap-1 mb-2">
+                                {availableLabels.slice(0, 3).map((label) => (
+                                    <span
+                                        key={label.id}
+                                        className="inline-block w-8 h-1.5 rounded-full"
+                                        style={{ backgroundColor: label.color }}
+                                        title={label.name}
+                                    />
+                                ))}
+                                {availableLabels.length > 3 && (
+                                    <span className="text-xs text-gray-500 dark:text-gray-400 self-center">
+                                        +{availableLabels.length - 3}
+                                    </span>
+                                )}
+                            </div>
+                        )}
+
                         {/* Main Task Title */}
                         <div className="flex items-center justify-between gap-2 min-w-0">
                             {isEditing ? (
@@ -328,32 +347,13 @@ const TaskCard = ({ task, index, onUpdate, onDelete, onComplete, onKeyDown, isAd
                                 {/* Priority Badge */}
                                 {task.priority && task.priority !== 'none' && (
                                     <div className={`flex items-center gap-1 text-xs px-2 py-1 rounded-full font-medium
-                                        ${task.priority === 'high' 
-                                            ? 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-300' 
+                                        ${task.priority === 'high'
+                                            ? 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-300'
                                             : task.priority === 'medium'
                                             ? 'bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-300'
                                             : 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-300'
                                         }`}>
                                         <span>{task.priority}</span>
-                                    </div>
-                                )}
-
-                                {/* Labels/Tags */}
-                                {availableLabels.length > 0 && (
-                                    <div className="flex flex-wrap gap-1">
-                                        {availableLabels.slice(0, 3).map((label) => (
-                                            <span
-                                                key={label.id}
-                                                className="inline-block w-8 h-3 rounded-sm"
-                                                style={{ backgroundColor: label.color }}
-                                                title={label.name}
-                                            />
-                                        ))}
-                                        {availableLabels.length > 3 && (
-                                            <span className="text-xs text-gray-500 dark:text-gray-400 self-center">
-                                                +{availableLabels.length - 3}
-                                            </span>
-                                        )}
                                     </div>
                                 )}
                             </div>
