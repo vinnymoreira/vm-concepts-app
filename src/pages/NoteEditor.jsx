@@ -3,10 +3,12 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { supabase } from '../supabaseClient';
 import Sidebar from '../partials/Sidebar';
 import Header from '../partials/Header';
-import { ArrowLeft, Star, Trash2, Folder, Calendar } from 'lucide-react';
+import { ArrowLeft, Star, Trash2, Folder, Calendar, Sparkles } from 'lucide-react';
 import { format } from 'date-fns';
 import { useAuth } from '../context/AuthContext';
 import TiptapEditor from '../partials/notes/TiptapEditor';
+import AISuggestionModal from '../partials/notes/AISuggestionModal';
+import { generateContentSuggestion } from '../utils/aiSuggestions';
 import debounce from '../utils/debounce';
 
 function NoteEditor() {
@@ -23,6 +25,9 @@ function NoteEditor() {
   const [error, setError] = useState(null);
   const [saving, setSaving] = useState(false);
   const [lastSaved, setLastSaved] = useState(null);
+  const [isAIModalOpen, setIsAIModalOpen] = useState(false);
+  const [aiLoading, setAiLoading] = useState(false);
+  const [aiSuggestion, setAiSuggestion] = useState('');
 
   // Fetch note data
   useEffect(() => {
@@ -210,6 +215,71 @@ function NoteEditor() {
     }
   };
 
+  // Convert TipTap JSON content to plain text for AI
+  const contentToText = (content) => {
+    if (!content || !content.content) return '';
+
+    const extractText = (node) => {
+      if (node.type === 'text') {
+        return node.text || '';
+      }
+      if (node.content) {
+        return node.content.map(extractText).join('\n');
+      }
+      return '';
+    };
+
+    return extractText(content);
+  };
+
+  const handleAISuggest = async (suggestionType = 'continue') => {
+    setAiLoading(true);
+    setAiSuggestion('');
+
+    try {
+      const currentCategory = categories.find(cat => cat.id === note?.category_id);
+      const textContent = contentToText(content);
+
+      if (!textContent.trim()) {
+        setError('Please write some content first before asking for AI suggestions.');
+        setAiLoading(false);
+        return;
+      }
+
+      const suggestion = await generateContentSuggestion(
+        textContent,
+        currentCategory?.name,
+        suggestionType
+      );
+
+      setAiSuggestion(suggestion);
+    } catch (err) {
+      console.error('Error generating AI suggestion:', err);
+      setError(err.message || 'Failed to generate suggestion. Please check your API key configuration.');
+    } finally {
+      setAiLoading(false);
+    }
+  };
+
+  const handleApplySuggestion = (suggestion) => {
+    // Append the suggestion to the current content
+    // This will be inserted at the end of the document
+    const newParagraph = {
+      type: 'paragraph',
+      content: [{ type: 'text', text: suggestion }]
+    };
+
+    const updatedContent = {
+      ...content,
+      content: [...(content.content || []), newParagraph]
+    };
+
+    setContent(updatedContent);
+    handleContentChange(updatedContent);
+    setIsAIModalOpen(false);
+    setAiSuggestion('');
+  };
+
   if (authLoading || loading) {
     return (
       <div className="flex h-screen overflow-hidden">
@@ -350,11 +420,27 @@ function NoteEditor() {
               <TiptapEditor
                 content={content}
                 onUpdate={handleContentChange}
+                onAISuggest={() => setIsAIModalOpen(true)}
               />
             )}
           </div>
         </main>
       </div>
+
+      {/* AI Suggestion Modal */}
+      <AISuggestionModal
+        isOpen={isAIModalOpen}
+        onClose={() => {
+          setIsAIModalOpen(false);
+          setAiSuggestion('');
+          setError(null);
+        }}
+        onApplySuggestion={handleApplySuggestion}
+        onGenerateSuggestion={handleAISuggest}
+        suggestion={aiSuggestion}
+        loading={aiLoading}
+        categoryName={categories.find(cat => cat.id === note?.category_id)?.name}
+      />
     </div>
   );
 }

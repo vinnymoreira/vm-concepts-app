@@ -162,18 +162,37 @@ const Login = () => {
     try {
       setLoading(true);
       showMessage('Connecting to Google...', 'success');
-      
-      const { error } = await supabase.auth.signInWithOAuth({
+
+      const { data, error } = await supabase.auth.signInWithOAuth({
         provider: 'google',
         options: {
-          redirectTo: `${window.location.origin}/`
+          redirectTo: `${window.location.origin}/`,
+          queryParams: {
+            access_type: 'offline',
+            prompt: 'consent',
+          },
         }
       });
-      
-      if (error) throw error;
+
+      if (error) {
+        console.error('Google OAuth error:', error);
+        throw error;
+      }
+
+      // OAuth will redirect, so we don't need to do anything else here
+      // The redirect happens automatically
     } catch (error) {
-      showMessage('Google authentication failed. Please try again.');
-    } finally {
+      console.error('Google authentication error:', error);
+
+      // Provide more specific error messages
+      if (error.message?.includes('popup')) {
+        showMessage('Please allow popups for Google sign-in to work.');
+      } else if (error.message?.includes('email')) {
+        showMessage('This email is already registered. Please sign in with your password or try password reset.');
+      } else {
+        showMessage(error.message || 'Google authentication failed. Please try again.');
+      }
+
       setLoading(false);
     }
   };

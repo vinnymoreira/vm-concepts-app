@@ -17,10 +17,11 @@ import {
   Quote,
   Minus,
   CheckSquare,
-  Link as LinkIcon
+  Link as LinkIcon,
+  Sparkles
 } from 'lucide-react';
 
-function TiptapEditor({ content, onUpdate }) {
+function TiptapEditor({ content, onUpdate, onAISuggest }) {
   const editor = useEditor({
     extensions: [
       StarterKit.configure({
@@ -204,6 +205,21 @@ function TiptapEditor({ content, onUpdate }) {
         >
           <LinkIcon className="w-4 h-4" />
         </button>
+
+        {/* AI Suggestion Button */}
+        {onAISuggest && (
+          <>
+            <div className="flex-1" />
+            <button
+              onClick={onAISuggest}
+              className="flex items-center gap-2 px-3 py-2 bg-gradient-to-r from-violet-500 to-purple-600 hover:from-violet-600 hover:to-purple-700 text-white rounded-lg font-medium shadow-md hover:shadow-lg"
+              title="AI Suggestions - Get help with your writing"
+            >
+              <Sparkles className="w-4 h-4" />
+              <span className="text-sm">AI Suggest</span>
+            </button>
+          </>
+        )}
       </div>
 
       {/* Editor content */}
