@@ -2,7 +2,7 @@ import React, { useState, useRef } from 'react';
 import { Upload, X, Camera, Loader2 } from 'lucide-react';
 import { supabase } from '../supabaseClient';
 
-const ImageUpload = ({ currentImageUrl = null, onImageUpload, onImageRemove, bucketName = 'client-logos', folder = 'logos' }) => {
+const ImageUpload = ({ currentImageUrl = null, onImageUpload, onImageRemove, bucketName = 'client-logos', folder = 'logos', hideLabel = false }) => {
   const [isUploading, setIsUploading] = useState(false);
   const [dragActive, setDragActive] = useState(false);
   const [previewUrl, setPreviewUrl] = useState(currentImageUrl);
@@ -119,10 +119,12 @@ const ImageUpload = ({ currentImageUrl = null, onImageUpload, onImageRemove, buc
 
   return (
     <div className="space-y-4">
-      <div className="text-sm font-semibold text-gray-700 dark:text-gray-300 flex items-center">
-        <Camera className="w-4 h-4 mr-2 text-indigo-500" />
-        Company Logo
-      </div>
+      {!hideLabel && (
+        <div className="text-sm font-semibold text-gray-700 dark:text-gray-300 flex items-center">
+          <Camera className="w-4 h-4 mr-2 text-indigo-500" />
+          Company Logo
+        </div>
+      )}
 
       {previewUrl ? (
         // Image Preview
@@ -197,11 +199,6 @@ const ImageUpload = ({ currentImageUrl = null, onImageUpload, onImageRemove, buc
         onChange={handleFileSelect}
         className="hidden"
       />
-
-      {/* Instructions */}
-      <p className="text-xs text-gray-500 dark:text-gray-400">
-        Supports JPG, PNG, WebP. Max 5MB.
-      </p>
     </div>
   );
 };

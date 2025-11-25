@@ -11,6 +11,7 @@ import NotesSidebar from '../partials/notes/NotesSidebar';
 import AddCategoryModal from '../partials/notes/AddCategoryModal';
 import EditCategoryModal from '../partials/notes/EditCategoryModal';
 import ImportNotesModal from '../partials/notes/ImportNotesModal';
+import ExpandableSearchBar from '../components/ExpandableSearchBar';
 
 function Notes() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
@@ -402,18 +403,12 @@ function Notes() {
                 </button>
 
                 {/* Search bar and view toggle */}
-                <div className="mb-6 flex flex-col sm:flex-row gap-3">
-                  <div className="relative flex-1">
-                    <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400" />
-                    <input
-                      type="text"
-                      placeholder="Search notes..."
-                      value={searchQuery}
-                      onChange={(e) => setSearchQuery(e.target.value)}
-                      className="w-full pl-10 pr-4 py-2 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg focus:ring-2 focus:ring-violet-500 focus:border-transparent"
-                    />
-                  </div>
-
+                <div className="mb-6 flex items-center justify-end gap-3">
+                  <ExpandableSearchBar
+                    value={searchQuery}
+                    onChange={setSearchQuery}
+                    placeholder="Search notes..."
+                  />
                   {/* View toggle */}
                   <div className="flex gap-1 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg p-1">
                     <button

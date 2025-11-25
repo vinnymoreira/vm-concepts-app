@@ -7,6 +7,7 @@ import './css/style.css';
 import Dashboard from './pages/Dashboard';
 import Clients from './pages/Clients';
 import ClientDetail from './partials/clients/ClientDetail';
+import Projects from './pages/Projects';
 import Tasks from './pages/Tasks';
 import Fitness from './pages/Fitness';
 import Habits from './pages/Habits';
@@ -46,6 +47,11 @@ function App() {
         <Route path="/clients/:id" element={
           <ProtectedRoute>
             <ClientDetail />
+          </ProtectedRoute>
+        } />
+        <Route path="/projects" element={
+          <ProtectedRoute>
+            <Projects />
           </ProtectedRoute>
         } />
         <Route path="/fitness" element={
