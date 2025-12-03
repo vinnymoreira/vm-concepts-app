@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { supabase } from '../supabaseClient';
 import Sidebar from '../partials/Sidebar';
@@ -15,6 +15,7 @@ function NoteEditor() {
   const { id } = useParams();
   const navigate = useNavigate();
   const { user, loading: authLoading } = useAuth();
+  const editorRef = useRef(null);
 
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [note, setNote] = useState(null);
@@ -262,20 +263,10 @@ function NoteEditor() {
   };
 
   const handleApplySuggestion = (suggestion) => {
-    // Append the suggestion to the current content
-    // This will be inserted at the end of the document
-    const newParagraph = {
-      type: 'paragraph',
-      content: [{ type: 'text', text: suggestion }]
-    };
-
-    const updatedContent = {
-      ...content,
-      content: [...(content.content || []), newParagraph]
-    };
-
-    setContent(updatedContent);
-    handleContentChange(updatedContent);
+    // Use the editor ref to insert text at the end
+    if (editorRef.current) {
+      editorRef.current.insertText(suggestion);
+    }
     setIsAIModalOpen(false);
     setAiSuggestion('');
   };
@@ -418,6 +409,7 @@ function NoteEditor() {
             {/* Editor */}
             {content && (
               <TiptapEditor
+                ref={editorRef}
                 content={content}
                 onUpdate={handleContentChange}
                 onAISuggest={() => setIsAIModalOpen(true)}

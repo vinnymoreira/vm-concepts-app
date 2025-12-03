@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useImperativeHandle, forwardRef } from 'react';
 import { useEditor, EditorContent } from '@tiptap/react';
 import StarterKit from '@tiptap/starter-kit';
 import Link from '@tiptap/extension-link';
@@ -21,7 +21,7 @@ import {
   Sparkles
 } from 'lucide-react';
 
-function TiptapEditor({ content, onUpdate, onAISuggest }) {
+const TiptapEditor = forwardRef(({ content, onUpdate, onAISuggest }, ref) => {
   const editor = useEditor({
     extensions: [
       StarterKit.configure({
@@ -53,6 +53,41 @@ function TiptapEditor({ content, onUpdate, onAISuggest }) {
       },
     },
   });
+
+  // Expose methods to parent component
+  useImperativeHandle(ref, () => ({
+    insertText: (text) => {
+      if (editor) {
+        // Split text by double newlines to preserve paragraph structure
+        const paragraphs = text.split(/\n\n+/).filter(p => p.trim());
+
+        // Create content nodes: 2 empty lines + paragraphs
+        const contentNodes = [
+          { type: 'paragraph' }, // Empty line
+          { type: 'paragraph' }, // Empty line
+          ...paragraphs.map(paragraphText => ({
+            type: 'paragraph',
+            content: paragraphText.split('\n').map((line, idx, arr) => {
+              // Handle single line breaks within paragraphs as text nodes with hard breaks
+              if (idx < arr.length - 1) {
+                return [
+                  { type: 'text', text: line },
+                  { type: 'hardBreak' }
+                ];
+              }
+              return { type: 'text', text: line };
+            }).flat()
+          }))
+        ];
+
+        // Move to end and insert all content
+        editor.chain()
+          .focus('end')
+          .insertContent(contentNodes)
+          .run();
+      }
+    },
+  }));
 
   if (!editor) {
     return null;
@@ -226,6 +261,8 @@ function TiptapEditor({ content, onUpdate, onAISuggest }) {
       <EditorContent editor={editor} />
     </div>
   );
-}
+});
+
+TiptapEditor.displayName = 'TiptapEditor';
 
 export default TiptapEditor;

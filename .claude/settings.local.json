@@ -4,7 +4,9 @@
       "*",
       "Bash(cd:*)",
       "Skill(frontend-design)",
-      "Bash(grep:*)"
+      "Bash(grep:*)",
+      "Bash(npm install:*)",
+      "Bash(supabase --version:*)"
     ]
   },
   "hooks": {
