@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { X } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { supabase } from '../../supabaseClient';
-import DatePicker from '../../components/DatePicker';
+import DatePicker from '../../components/Datepicker';
 
 function AddProjectModal({ isOpen, onClose, onAddProject, clients }) {
   const { user } = useAuth();

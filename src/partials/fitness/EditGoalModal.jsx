@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { X, Trash2 } from 'lucide-react';
-import DatePicker from '../../components/DatePicker';
+import DatePicker from '../../components/Datepicker';
 
 const getTodayDateString = () => {
   const now = new Date();

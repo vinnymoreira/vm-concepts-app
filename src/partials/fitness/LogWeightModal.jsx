@@ -1,6 +1,6 @@
 import React from 'react';
 import { X } from 'lucide-react';
-import DatePicker from '../../components/DatePicker';
+import DatePicker from '../../components/Datepicker';
 
 const LogWeightModal = ({ 
   isOpen, 

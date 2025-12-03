@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Edit, Trash2, X } from 'lucide-react';
-import DatePicker from '../../components/DatePicker';
+import DatePicker from '../../components/Datepicker';
 
 const formatDisplayDate = (dateString) => {
   const date = new Date(dateString);

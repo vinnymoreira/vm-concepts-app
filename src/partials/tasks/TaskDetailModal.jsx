@@ -4,7 +4,7 @@ import { supabase } from '../../supabaseClient';
 import { useAuth } from '../../context/AuthContext';
 import LabelSelector from './LabelSelector';
 import LabelManagementModal from './LabelManagementModal';
-import DatePicker from '../../components/DatePicker';
+import DatePicker from '../../components/Datepicker';
 
 const TaskDetailModal = ({ isOpen, onClose, task, onUpdate, onDelete }) => {
     const [isEditing, setIsEditing] = useState(false);
