@@ -1,4 +1,12 @@
 {
+  "permissions": {
+    "allow": [
+      "*",
+      "Bash(cd:*)",
+      "Skill(frontend-design)",
+      "Bash(grep:*)"
+    ]
+  },
   "hooks": {
     "Stop": [
       {

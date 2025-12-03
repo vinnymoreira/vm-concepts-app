@@ -91,6 +91,7 @@ export default {
       },
       fontFamily: {
         inter: ['Inter', 'sans-serif'],
+        serif: ['Playfair Display', 'serif'],
       },
       fontSize: {
         xs: ['0.75rem', { lineHeight: '1.5' }],

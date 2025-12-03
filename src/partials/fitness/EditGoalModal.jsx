@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { X, Trash2 } from 'lucide-react';
+import DatePicker from '../../components/DatePicker';
 
 const getTodayDateString = () => {
   const now = new Date();
@@ -238,12 +239,10 @@ const EditGoalModal = ({
                 <label className="block text-sm font-medium mb-2 text-gray-700 dark:text-gray-300">
                   Starting Date
                 </label>
-                <input
-                  type="date"
-                  className="form-input w-full"
+                <DatePicker
                   value={startingDate}
-                  onChange={(e) => setStartingDate(e.target.value)}
-                  required
+                  onChange={setStartingDate}
+                  placeholder="Select starting date"
                 />
               </div>
             </div>
@@ -267,12 +266,10 @@ const EditGoalModal = ({
                 <label className="block text-sm font-medium mb-2 text-gray-700 dark:text-gray-300">
                   Target Deadline
                 </label>
-                <input
-                  type="date"
-                  className="form-input w-full"
+                <DatePicker
                   value={deadline}
-                  onChange={(e) => setDeadlineLocal(e.target.value)}
-                  required
+                  onChange={setDeadlineLocal}
+                  placeholder="Select target deadline"
                 />
               </div>
             </div>

@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { X } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { supabase } from '../../supabaseClient';
+import DatePicker from '../../components/DatePicker';
 
 function AddProjectModal({ isOpen, onClose, onAddProject, clients }) {
   const { user } = useAuth();
@@ -282,12 +283,10 @@ function AddProjectModal({ isOpen, onClose, onAddProject, clients }) {
               <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                 Deadline
               </label>
-              <input
-                type="date"
-                name="deadline"
+              <DatePicker
                 value={formData.deadline}
-                onChange={handleInputChange}
-                className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 dark:bg-gray-700 dark:text-white"
+                onChange={(value) => setFormData({ ...formData, deadline: value })}
+                placeholder="Select deadline"
               />
             </div>
           </div>

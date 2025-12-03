@@ -14,6 +14,7 @@ import Habits from './pages/Habits';
 import Profile from './pages/Profile';
 import Notes from './pages/Notes';
 import NoteEditor from './pages/NoteEditor';
+import Timeline from './pages/Timeline';
 
 
 // Import auth components
@@ -77,6 +78,11 @@ function App() {
         <Route path="/notes/:id" element={
           <ProtectedRoute>
             <NoteEditor />
+          </ProtectedRoute>
+        } />
+        <Route path="/timeline" element={
+          <ProtectedRoute>
+            <Timeline />
           </ProtectedRoute>
         } />
         <Route path="/profile" element={

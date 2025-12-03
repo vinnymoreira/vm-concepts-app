@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { Edit, Trash2, X } from 'lucide-react';
+import DatePicker from '../../components/DatePicker';
 
 const formatDisplayDate = (dateString) => {
   const date = new Date(dateString);
@@ -51,11 +52,11 @@ const ProgressHistoryCard = ({
                   {editingLogId === log.id ? (
                     <>
                       <div className="flex space-x-2 flex-grow">
-                        <input
-                          type="date"
+                        <DatePicker
                           value={editDate}
-                          onChange={(e) => setEditDate(e.target.value)}
-                          className="form-input text-sm"
+                          onChange={setEditDate}
+                          placeholder="Select date"
+                          className="text-sm"
                         />
                         <input
                           type="number"

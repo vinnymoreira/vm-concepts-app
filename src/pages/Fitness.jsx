@@ -294,7 +294,7 @@ function Fitness() {
   // Refresh function for reusing data fetching logic
   const refreshFitnessData = async () => {
     if (!user) return;
-    
+
     try {
       // Fetch all goals
       const { data: goalsData } = await supabase
@@ -302,14 +302,14 @@ function Fitness() {
         .select('*')
         .eq('user_id', user.id)
         .order('created_at', { ascending: false });
-      
+
       setGoals(goalsData || []);
-      
-      // Update active goal if it still exists
-      const currentActiveGoal = goalsData?.find(g => g.id === activeGoal?.id) || 
-                               goalsData?.find(g => g.status === 'active') || 
+
+      // Prioritize active goal, then fall back to current goal if it still exists
+      const currentActiveGoal = goalsData?.find(g => g.status === 'active') ||
+                               goalsData?.find(g => g.id === activeGoal?.id) ||
                                goalsData?.[0];
-      
+
       setActiveGoal(currentActiveGoal);
       
       if (currentActiveGoal) {

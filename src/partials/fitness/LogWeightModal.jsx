@@ -1,5 +1,6 @@
 import React from 'react';
 import { X } from 'lucide-react';
+import DatePicker from '../../components/DatePicker';
 
 const LogWeightModal = ({ 
   isOpen, 
@@ -49,12 +50,10 @@ const LogWeightModal = ({
               <label className="block text-sm font-medium mb-2 text-gray-700 dark:text-gray-300">
                 Date
               </label>
-              <input
-                type="date"
-                className="form-input w-full"
+              <DatePicker
                 value={logDate}
-                onChange={(e) => setLogDate(e.target.value)}
-                required
+                onChange={setLogDate}
+                placeholder="Select date"
               />
             </div>
           </div>

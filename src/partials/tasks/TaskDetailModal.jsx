@@ -4,6 +4,7 @@ import { supabase } from '../../supabaseClient';
 import { useAuth } from '../../context/AuthContext';
 import LabelSelector from './LabelSelector';
 import LabelManagementModal from './LabelManagementModal';
+import DatePicker from '../../components/DatePicker';
 
 const TaskDetailModal = ({ isOpen, onClose, task, onUpdate, onDelete }) => {
     const [isEditing, setIsEditing] = useState(false);
@@ -383,32 +384,19 @@ const TaskDetailModal = ({ isOpen, onClose, task, onUpdate, onDelete }) => {
                                 Due Date
                             </label>
                             {editingField === 'due_date' ? (
-                                <input
-                                    type="date"
+                                <DatePicker
                                     value={formData.due_date}
-                                    onChange={(e) => {
-                                        setFormData(prev => ({ ...prev, due_date: e.target.value }));
+                                    onChange={(value) => {
+                                        setFormData(prev => ({ ...prev, due_date: value }));
                                         setEditingField(null);
-                                        handleFieldSave('due_date', e.target.value || null);
+                                        handleFieldSave('due_date', value || null);
                                     }}
-                                    onBlur={() => setEditingField(null)}
-                                    autoFocus
-                                    className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-gray-100"
+                                    placeholder="Select due date"
                                 />
                             ) : (
                                 <div
                                     className="flex items-center gap-2 cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-700/50 rounded px-2 py-1 -mx-2 -my-1 transition-colors"
-                                    onClick={() => {
-                                        setEditingField('due_date');
-                                        // Auto-focus the date input after a small delay to ensure it's rendered
-                                        setTimeout(() => {
-                                            const dateInput = document.querySelector('input[type="date"]');
-                                            if (dateInput) {
-                                                dateInput.focus();
-                                                dateInput.showPicker?.(); // Show calendar picker if supported
-                                            }
-                                        }, 100);
-                                    }}
+                                    onClick={() => setEditingField('due_date')}
                                 >
                                     <Calendar className="w-4 h-4 text-gray-500" />
                                     <span className="text-gray-700 dark:text-gray-300">
