@@ -8,3 +8,6 @@ dist-ssr
 .vscode
 package-lock.json
 CLAUDE.md
+
+# Supabase CLI binary (should be installed globally or via npm, not committed)
+supabase/supabase
