@@ -8,20 +8,22 @@ const DashboardCardWeeklyTasks = () => {
   const [tasks, setTasks] = useState({});
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [availableLabels, setAvailableLabels] = useState([]);
   const { user } = useAuth();
-  
+
   const columnTitles = ['Today', 'Tomorrow', 'This Week'];
 
   useEffect(() => {
     if (user) {
       fetchTasks();
+      fetchLabels();
     }
   }, [user]);
 
   const fetchTasks = async () => {
     try {
       setLoading(true);
-      
+
       // First, get the column IDs for Today, Tomorrow, and This Week
       const { data: columns, error: columnsError } = await supabase
         .from('task_columns')
@@ -56,6 +58,20 @@ const DashboardCardWeeklyTasks = () => {
     }
   };
 
+  const fetchLabels = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('task_labels')
+        .select('*')
+        .eq('user_id', user.id);
+
+      if (error) throw error;
+      setAvailableLabels(data || []);
+    } catch (err) {
+      console.error('Error fetching labels:', err);
+    }
+  };
+
   const getPriorityColor = (priority) => {
     switch (priority) {
       case 'high': return 'text-red-500';
@@ -72,16 +88,6 @@ const DashboardCardWeeklyTasks = () => {
       case 'low': return CheckCircle2;
       default: return CheckCircle2;
     }
-  };
-
-  const getLabelColor = (label, index) => {
-    const colors = ['bg-green-500', 'bg-yellow-500', 'bg-orange-500', 'bg-red-500', 'bg-purple-500', 'bg-blue-500', 'bg-pink-500', 'bg-indigo-500', 'bg-teal-500', 'bg-gray-500'];
-    let hash = 0;
-    for (let i = 0; i < label.length; i++) {
-      hash = label.charCodeAt(i) + ((hash << 5) - hash);
-    }
-    const colorIndex = Math.abs(hash) % colors.length;
-    return colors[colorIndex];
   };
 
   const formatDueDate = (dueDate) => {
@@ -147,14 +153,19 @@ const DashboardCardWeeklyTasks = () => {
                   {/* Labels */}
                   {task.labels && task.labels.length > 0 && (
                     <div className="flex gap-1 flex-wrap">
-                      {task.labels.slice(0, 2).map((label, index) => (
-                        <span
-                          key={index}
-                          className={`text-xs px-1.5 py-0.5 rounded-full text-white ${getLabelColor(label, index)}`}
-                        >
-                          {label}
-                        </span>
-                      ))}
+                      {task.labels.slice(0, 2).map((labelId, index) => {
+                        const label = availableLabels.find(l => l.id === labelId);
+                        if (!label) return null;
+                        return (
+                          <span
+                            key={labelId}
+                            className="text-xs px-1.5 py-0.5 rounded-full text-white"
+                            style={{ backgroundColor: label.color }}
+                          >
+                            {label.name}
+                          </span>
+                        );
+                      })}
                       {task.labels.length > 2 && (
                         <span className="text-xs text-gray-500 dark:text-gray-400">
                           +{task.labels.length - 2}

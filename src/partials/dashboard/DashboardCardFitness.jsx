@@ -21,33 +21,40 @@ function DashboardCardFitness() {
     try {
       setLoading(true);
       setError(null);
-      
-      // Fetch goal
+
+      // Fetch most recent active goal
       const { data: goalData, error: goalError } = await supabase
         .from('fitness_goals')
         .select('*')
         .eq('user_id', user.id)
-        .single();
-      
-      if (goalError && goalError.code !== 'PGRST116') {
+        .order('created_at', { ascending: false })
+        .limit(1);
+
+      if (goalError) {
         throw goalError;
       }
-      
-      setGoal(goalData);
 
-      // Fetch recent weight logs
-      const { data: weightData, error: weightError } = await supabase
-        .from('weight_logs')
-        .select('*')
-        .eq('user_id', user.id)
-        .order('log_date', { ascending: false })
-        .limit(10);
-      
-      if (weightError) {
-        throw weightError;
+      const currentGoal = goalData && goalData.length > 0 ? goalData[0] : null;
+      setGoal(currentGoal);
+
+      // Fetch recent weight logs for this specific goal
+      if (currentGoal) {
+        const { data: weightData, error: weightError } = await supabase
+          .from('weight_logs')
+          .select('*')
+          .eq('user_id', user.id)
+          .eq('goal_id', currentGoal.id)
+          .order('log_date', { ascending: false })
+          .limit(10);
+
+        if (weightError) {
+          throw weightError;
+        }
+
+        setWeightLogs(weightData || []);
+      } else {
+        setWeightLogs([]);
       }
-      
-      setWeightLogs(weightData || []);
     } catch (error) {
       console.error('Error fetching fitness data:', error);
       setError(error.message);
@@ -58,22 +65,36 @@ function DashboardCardFitness() {
 
   const getProgressData = () => {
     if (!goal || weightLogs.length === 0) return null;
-    
+
     const currentWeight = weightLogs[0].weight;
-    const startingWeight = goal.starting_weight || (weightLogs.length > 0 ? weightLogs[weightLogs.length - 1].weight : currentWeight);
+    const startingWeight = goal.starting_weight;
     const targetWeight = goal.target_weight;
-    
-    const totalWeightToLose = Math.abs(startingWeight - targetWeight);
-    const weightLostSoFar = Math.abs(startingWeight - currentWeight);
-    const progress = totalWeightToLose > 0 ? (weightLostSoFar / totalWeightToLose) * 100 : 0;
-    
+
+    // Determine if this is a weight loss or weight gain goal
+    const isWeightLoss = startingWeight > targetWeight;
+
+    // Calculate total change needed
+    const totalChange = Math.abs(startingWeight - targetWeight);
+
+    // Calculate change so far (positive number)
+    const changeSoFar = isWeightLoss
+      ? Math.max(0, startingWeight - currentWeight)  // For weight loss
+      : Math.max(0, currentWeight - startingWeight); // For weight gain
+
+    // Calculate remaining weight to reach goal
+    const remainingWeight = Math.abs(currentWeight - targetWeight);
+
+    // Calculate progress percentage
+    const progress = totalChange > 0 ? (changeSoFar / totalChange) * 100 : 0;
+
     return {
       currentWeight,
       startingWeight,
       targetWeight,
-      weightLostSoFar,
-      remainingWeight: Math.abs(currentWeight - targetWeight),
-      progress: Math.min(100, Math.max(0, progress))
+      weightLostSoFar: changeSoFar,
+      remainingWeight,
+      progress: Math.min(100, Math.max(0, progress)),
+      isWeightLoss
     };
   };
 
@@ -241,11 +262,13 @@ function DashboardCardFitness() {
                 </div>
               </div>
 
-              {/* Lost So Far */}
+              {/* Lost/Gained So Far */}
               <div className="bg-gray-50 dark:bg-gray-700/50 rounded-lg p-3">
                 <div className="flex items-center gap-2 mb-1">
                   <Activity className="w-4 h-4 text-green-500" />
-                  <span className="text-xs text-gray-500 dark:text-gray-400">Lost</span>
+                  <span className="text-xs text-gray-500 dark:text-gray-400">
+                    {progressData.isWeightLoss ? 'Lost' : 'Gained'}
+                  </span>
                 </div>
                 <div className="text-lg font-bold text-green-600 dark:text-green-400">
                   {progressData.weightLostSoFar.toFixed(1)} lbs

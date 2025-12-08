@@ -35,8 +35,8 @@ function Dashboard() {
             <div className="grid grid-cols-12 gap-6">
               <DashboardCardWeather />
               <DashboardCardWeeklyTasks />
-              <DashboardCardClients />
               <DashboardCardFitness />
+              {/* <DashboardCardClients /> */}
               <DashboardCardHabits />
             </div>
           </div>

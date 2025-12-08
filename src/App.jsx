@@ -15,6 +15,11 @@ import Profile from './pages/Profile';
 import Notes from './pages/Notes';
 import NoteEditor from './pages/NoteEditor';
 import Timeline from './pages/Timeline';
+import Bookkeeping from './pages/Bookkeeping';
+import BookkeepingStatements from './pages/BookkeepingStatements';
+import BookkeepingReceipts from './pages/BookkeepingReceipts';
+import BookkeepingReports from './pages/BookkeepingReports';
+import Rentals from './pages/Rentals';
 
 
 // Import auth components
@@ -83,6 +88,31 @@ function App() {
         <Route path="/timeline" element={
           <ProtectedRoute>
             <Timeline />
+          </ProtectedRoute>
+        } />
+        <Route path="/bookkeeping" element={
+          <ProtectedRoute>
+            <BookkeepingReports />
+          </ProtectedRoute>
+        } />
+        <Route path="/bookkeeping/transactions" element={
+          <ProtectedRoute>
+            <Bookkeeping />
+          </ProtectedRoute>
+        } />
+        <Route path="/bookkeeping/statements" element={
+          <ProtectedRoute>
+            <BookkeepingStatements />
+          </ProtectedRoute>
+        } />
+        <Route path="/bookkeeping/receipts" element={
+          <ProtectedRoute>
+            <BookkeepingReceipts />
+          </ProtectedRoute>
+        } />
+        <Route path="/bookkeeping/rentals" element={
+          <ProtectedRoute>
+            <Rentals />
           </ProtectedRoute>
         } />
         <Route path="/profile" element={
