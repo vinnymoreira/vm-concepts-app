@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { PlusCircle, DollarSign, TrendingDown, TrendingUp, Home, Edit, Trash2 } from 'lucide-react';
+import { PlusCircle, DollarSign, TrendingDown, TrendingUp, Home, Edit, Trash2, Download } from 'lucide-react';
 import { supabase } from '../supabaseClient';
 import { useAuth } from '../context/AuthContext';
 
@@ -15,7 +15,7 @@ function Rentals() {
   const [rentalRecords, setRentalRecords] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
-  const [timePeriod, setTimePeriod] = useState('this_quarter');
+  const [timePeriod, setTimePeriod] = useState('this_year');
   const [customStartDate, setCustomStartDate] = useState('');
   const [customEndDate, setCustomEndDate] = useState('');
   const [isPropertyModalOpen, setIsPropertyModalOpen] = useState(false);
@@ -252,6 +252,98 @@ function Rentals() {
     setIsRecordModalOpen(true);
   };
 
+  // Export functions
+  const handleExportCSV = () => {
+    if (filteredRentalRecords.length === 0) {
+      alert('No records to export for the selected time period.');
+      return;
+    }
+
+    // Create CSV header
+    const headers = [
+      'Date',
+      'Property',
+      'Rental Income',
+      'Mortgage',
+      'Maintenance',
+      'Property Management',
+      'Other Expenses',
+      'Total Expenses',
+      'Net Profit',
+      'Notes'
+    ];
+
+    // Create CSV rows
+    const rows = filteredRentalRecords
+      .sort((a, b) => new Date(a.record_date) - new Date(b.record_date))
+      .map(record => {
+        const property = rentalProperties.find(p => p.id === record.property_id);
+        const totalExpenses =
+          parseFloat(record.mortgage || 0) +
+          parseFloat(record.maintenance || 0) +
+          parseFloat(record.property_management || 0) +
+          parseFloat(record.other_expenses || 0);
+        const netProfit = parseFloat(record.rental_income || 0) - totalExpenses;
+
+        return [
+          record.record_date,
+          property?.property_name || 'Unknown',
+          record.rental_income || 0,
+          record.mortgage || 0,
+          record.maintenance || 0,
+          record.property_management || 0,
+          record.other_expenses || 0,
+          totalExpenses.toFixed(2),
+          netProfit.toFixed(2),
+          `"${(record.notes || '').replace(/"/g, '""')}"` // Escape quotes in notes
+        ];
+      });
+
+    // Add summary row
+    const totalIncome = filteredRentalRecords.reduce((sum, r) => sum + parseFloat(r.rental_income || 0), 0);
+    const totalMortgage = filteredRentalRecords.reduce((sum, r) => sum + parseFloat(r.mortgage || 0), 0);
+    const totalMaintenance = filteredRentalRecords.reduce((sum, r) => sum + parseFloat(r.maintenance || 0), 0);
+    const totalPropertyMgmt = filteredRentalRecords.reduce((sum, r) => sum + parseFloat(r.property_management || 0), 0);
+    const totalOther = filteredRentalRecords.reduce((sum, r) => sum + parseFloat(r.other_expenses || 0), 0);
+    const totalAllExpenses = totalMortgage + totalMaintenance + totalPropertyMgmt + totalOther;
+    const totalNetProfit = totalIncome - totalAllExpenses;
+
+    rows.push([]);
+    rows.push([
+      'TOTALS',
+      '',
+      totalIncome.toFixed(2),
+      totalMortgage.toFixed(2),
+      totalMaintenance.toFixed(2),
+      totalPropertyMgmt.toFixed(2),
+      totalOther.toFixed(2),
+      totalAllExpenses.toFixed(2),
+      totalNetProfit.toFixed(2),
+      ''
+    ]);
+
+    // Combine into CSV string
+    const csvContent = [
+      headers.join(','),
+      ...rows.map(row => row.join(','))
+    ].join('\n');
+
+    // Create download
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const link = document.createElement('a');
+    const url = URL.createObjectURL(blob);
+
+    const periodLabel = getPeriodLabel().replace(/\s+/g, '_');
+    const fileName = `Rental_Records_${periodLabel}_${new Date().toISOString().split('T')[0]}.csv`;
+
+    link.setAttribute('href', url);
+    link.setAttribute('download', fileName);
+    link.style.visibility = 'hidden';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
+
   // Get date range based on selected period
   const getDateRange = () => {
     const now = new Date();
@@ -416,6 +508,14 @@ function Rentals() {
 
               {/* Actions */}
               <div className="flex items-center space-x-2">
+                <button
+                  className="btn bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700 hover:border-gray-300 dark:hover:border-gray-600 text-gray-600 dark:text-gray-300"
+                  onClick={handleExportCSV}
+                  disabled={filteredRentalRecords.length === 0}
+                >
+                  <Download className="w-4 h-4 mr-2" />
+                  <span>Export CSV</span>
+                </button>
                 <button
                   className="btn bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700 hover:border-gray-300 dark:hover:border-gray-600 text-gray-600 dark:text-gray-300"
                   onClick={() => {
