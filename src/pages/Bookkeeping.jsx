@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { PlusCircle, Upload, DollarSign, TrendingDown, TrendingUp } from 'lucide-react';
+import { PlusCircle, Upload, DollarSign, TrendingDown, TrendingUp, Settings } from 'lucide-react';
 import { supabase } from '../supabaseClient';
 import { useAuth } from '../context/AuthContext';
 
@@ -8,7 +8,9 @@ import Header from '../partials/Header';
 import TransactionTable from '../partials/bookkeeping/TransactionTable';
 import UploadStatementModal from '../partials/bookkeeping/UploadStatementModal';
 import TransactionDetailPanel from '../partials/bookkeeping/TransactionDetailPanel';
+import ManageCategoriesModal from '../partials/bookkeeping/ManageCategoriesModal';
 import ExpandableSearchBar from '../components/ExpandableSearchBar';
+import { seedDefaultCategories } from '../utils/categorySeeder';
 
 function Bookkeeping() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
@@ -20,6 +22,7 @@ function Bookkeeping() {
   const [customStartDate, setCustomStartDate] = useState('');
   const [customEndDate, setCustomEndDate] = useState('');
   const [isUploadModalOpen, setIsUploadModalOpen] = useState(false);
+  const [isCategoryModalOpen, setIsCategoryModalOpen] = useState(false);
   const [selectedTransaction, setSelectedTransaction] = useState(null);
   const [isDetailPanelOpen, setIsDetailPanelOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
@@ -40,7 +43,7 @@ function Bookkeeping() {
       setError(null);
 
       // Fetch categories
-      const { data: categoriesData, error: categoriesError } = await supabase
+      let { data: categoriesData, error: categoriesError } = await supabase
         .from('bookkeeping_categories')
         .select('*')
         .eq('user_id', user.id)
@@ -53,6 +56,18 @@ function Bookkeeping() {
       }
 
       console.log('Loaded categories:', categoriesData?.length || 0);
+
+      // Seed default categories if none exist
+      if (!categoriesData || categoriesData.length === 0) {
+        console.log('No categories found, seeding defaults...');
+        try {
+          categoriesData = await seedDefaultCategories(supabase, user.id);
+          console.log('Successfully seeded default categories');
+        } catch (seedError) {
+          console.error('Failed to seed categories:', seedError);
+          // Don't throw - allow user to continue even if seeding fails
+        }
+      }
 
       // Fetch transactions
       const { data: transactionsData, error: transactionsError } = await supabase
@@ -380,6 +395,13 @@ function Bookkeeping() {
                   <span>Upload Statement</span>
                 </button>
                 <button
+                  className="btn bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700 hover:border-gray-300 dark:hover:border-gray-600 text-gray-600 dark:text-gray-300"
+                  onClick={() => setIsCategoryModalOpen(true)}
+                >
+                  <Settings className="w-4 h-4 mr-2" />
+                  <span>Manage Categories</span>
+                </button>
+                <button
                   className="btn bg-indigo-500 hover:bg-indigo-600 text-white"
                   onClick={handleAddClick}
                 >
@@ -503,24 +525,6 @@ function Bookkeeping() {
               </div>
             </div>
 
-            {/* Setup Warning */}
-            {categories.length === 0 && !loading && (
-              <div className="bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded-xl p-4 mb-6">
-                <h3 className="text-sm font-semibold text-yellow-800 dark:text-yellow-200 mb-2">
-                  Database Setup Required
-                </h3>
-                <p className="text-sm text-yellow-700 dark:text-yellow-300 mb-3">
-                  No categories found. Please complete the database setup:
-                </p>
-                <ol className="text-sm text-yellow-700 dark:text-yellow-300 list-decimal list-inside space-y-1">
-                  <li>Go to Supabase → SQL Editor</li>
-                  <li>Run the migration script from <code className="bg-yellow-100 dark:bg-yellow-900 px-1 rounded">/supabase-migrations/bookkeeping-schema.sql</code></li>
-                  <li>Run: <code className="bg-yellow-100 dark:bg-yellow-900 px-1 rounded">SELECT seed_bookkeeping_categories(auth.uid());</code></li>
-                  <li>Refresh this page</li>
-                </ol>
-              </div>
-            )}
-
             {/* Transactions Table */}
             <div className="bg-white dark:bg-gray-800 shadow-sm rounded-xl p-5">
               <div className="flex items-center justify-between mb-4">
@@ -598,6 +602,14 @@ function Bookkeeping() {
         transaction={selectedTransaction}
         onSave={handleSaveTransaction}
         onDelete={handleDeleteTransaction}
+        categories={categories}
+      />
+
+      {/* Manage Categories Modal */}
+      <ManageCategoriesModal
+        isOpen={isCategoryModalOpen}
+        onClose={() => setIsCategoryModalOpen(false)}
+        onCategoriesUpdated={fetchData}
         categories={categories}
       />
     </div>

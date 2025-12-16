@@ -215,13 +215,13 @@ function Projects() {
   const financialSummary = useMemo(() => {
     return filteredProjects.reduce(
       (acc, project) => {
-        acc.totalNetIncome += parseFloat(project.net_income || 0);
-        acc.totalCost += parseFloat(project.cost || 0);
-        // Only count profit for paid projects
+        // Only count revenue and profit for paid projects
         if (project.payment_received) {
+          acc.totalNetIncome += parseFloat(project.net_income || 0);
           acc.totalProfit += parseFloat(project.profit || 0);
+          acc.paidCount += 1;
         }
-        acc.paidCount += project.payment_received ? 1 : 0;
+        acc.totalCost += parseFloat(project.cost || 0);
         // Count ongoing projects (open + in_progress)
         if (project.status === 'open' || project.status === 'in_progress') {
           acc.ongoingCount += 1;

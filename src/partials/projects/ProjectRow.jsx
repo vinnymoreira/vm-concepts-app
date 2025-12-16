@@ -195,7 +195,7 @@ function ProjectRow({ project, onUpdate, onDelete }) {
               value={project.status}
               onChange={(e) => handleStatusChange(e.target.value)}
               onBlur={() => setEditingField(null)}
-              className="px-3 py-1 text-xs font-medium rounded-full border border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500 dark:bg-gray-700 dark:text-white"
+              className="pl-3 pr-8 py-1 text-xs font-medium rounded-full border border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500 dark:bg-gray-700 dark:text-white"
             >
               <option value="open">Open</option>
               <option value="in_progress">In Progress</option>
@@ -290,7 +290,7 @@ function ProjectRow({ project, onUpdate, onDelete }) {
               onClick={() => startEditing('net_income', project.net_income)}
               className="text-sm font-medium text-gray-900 dark:text-gray-100 cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-600 px-2 py-1 rounded"
             >
-              {formatCurrency(project.net_income)}
+              {project.payment_received ? formatCurrency(project.net_income) : formatCurrency(0)}
             </div>
           )}
         </td>
@@ -321,7 +321,7 @@ function ProjectRow({ project, onUpdate, onDelete }) {
         {/* Profit (auto-calculated) */}
         <td className="px-4 py-3 whitespace-nowrap text-right">
           <div className="text-sm font-medium text-gray-900 dark:text-gray-100">
-            {formatCurrency(project.profit)}
+            {project.payment_received ? formatCurrency(project.profit) : formatCurrency(0)}
           </div>
         </td>
 

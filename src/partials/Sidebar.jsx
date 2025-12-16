@@ -143,25 +143,6 @@ function Sidebar({
                   </div>
                 </NavLink>
               </li>
-              {/* Projects */}
-              <li className={`pl-4 pr-3 py-2 rounded-lg mb-0.5 last:mb-0 bg-[linear-gradient(135deg,var(--tw-gradient-stops))] ${pathname.includes("projects") && "from-violet-500/[0.12] dark:from-violet-500/[0.24] to-violet-500/[0.04]"}`}>
-                <NavLink
-                  end
-                  to="/projects"
-                  className={`block text-gray-800 dark:text-gray-100 truncate transition duration-150 ${
-                    pathname.includes("projects") ? "" : "hover:text-gray-900 dark:hover:text-white"
-                  }`}
-                >
-                  <div className="flex items-center">
-                    <svg className={`shrink-0 fill-current ${pathname.includes('projects') ? 'text-violet-500' : 'text-gray-400 dark:text-gray-500'}`} xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 16 16">
-                      <path d="M2 2h4v4H2V2zm6 0h6v2H8V2zm6 4h-6v2h6V6zM8 10h6v2H8v-2zm-6-2h4v6H2V8z"/>
-                    </svg>
-                    <span className="text-sm font-medium ml-4 lg:opacity-0 lg:sidebar-expanded:opacity-100 2xl:opacity-100 duration-200">
-                      Projects
-                    </span>
-                  </div>
-                </NavLink>
-              </li>
               {/* Fitness */}
               <li className={`pl-4 pr-3 py-2 rounded-lg mb-0.5 last:mb-0 bg-[linear-gradient(135deg,var(--tw-gradient-stops))] ${pathname.includes("fitness") && "from-violet-500/[0.12] dark:from-violet-500/[0.24] to-violet-500/[0.04]"}`}>
                 <NavLink
@@ -247,6 +228,25 @@ function Sidebar({
                     <svg className={`shrink-0 fill-current ${pathname.includes('timeline') ? 'text-violet-500' : 'text-gray-400 dark:text-gray-500'}`} xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"><circle cx="9" cy="9" r="7"/><circle cx="15" cy="15" r="7"/></g></svg>
                     <span className="text-sm font-medium ml-4 lg:opacity-0 lg:sidebar-expanded:opacity-100 2xl:opacity-100 duration-200">
                       Timeline
+                    </span>
+                  </div>
+                </NavLink>
+              </li>
+              {/* Projects */}
+              <li className={`pl-4 pr-3 py-2 rounded-lg mb-0.5 last:mb-0 bg-[linear-gradient(135deg,var(--tw-gradient-stops))] ${pathname.includes("projects") && "from-violet-500/[0.12] dark:from-violet-500/[0.24] to-violet-500/[0.04]"}`}>
+                <NavLink
+                  end
+                  to="/projects"
+                  className={`block text-gray-800 dark:text-gray-100 truncate transition duration-150 ${
+                    pathname.includes("projects") ? "" : "hover:text-gray-900 dark:hover:text-white"
+                  }`}
+                >
+                  <div className="flex items-center">
+                    <svg className={`shrink-0 fill-current ${pathname.includes('projects') ? 'text-violet-500' : 'text-gray-400 dark:text-gray-500'}`} xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 16 16">
+                      <path d="M2 2h4v4H2V2zm6 0h6v2H8V2zm6 4h-6v2h6V6zM8 10h6v2H8v-2zm-6-2h4v6H2V8z"/>
+                    </svg>
+                    <span className="text-sm font-medium ml-4 lg:opacity-0 lg:sidebar-expanded:opacity-100 2xl:opacity-100 duration-200">
+                      Projects
                     </span>
                   </div>
                 </NavLink>
