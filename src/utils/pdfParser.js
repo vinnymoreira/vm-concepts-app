@@ -88,7 +88,7 @@ const detectCategory = (merchant) => {
     { keywords: ['EXPEDIA', 'HILTON', 'AMERICAN AIR', 'UNITED', 'DELTA', 'COPA', 'HOTEL', 'HOSTEL', 'AIRBNB'], category: 'Travel / Lodge' },
 
     // Groceries
-    { keywords: ['TARGET', 'SMART AND FINAL', 'SMART&FINAL'], category: 'Groceries' },
+    { keywords: ['TARGET', 'SMART AND FINAL', 'SPROUTS', 'CVS', 'VONS', 'TRADER JOE', 'TROPICAL', 'SMART&FINAL'], category: 'Groceries' },
 
     // Transportation
     { keywords: ['UBER', 'LYFT'], category: 'Transportation' },
