@@ -114,6 +114,26 @@ const detectCategory = (merchant) => {
 };
 
 /**
+ * Detect if a transaction is revenue based on merchant/description
+ * @param {string} merchant - Merchant or description text
+ * @returns {boolean} True if likely a revenue transaction
+ */
+const isRevenueTransaction = (merchant) => {
+  const merchantUpper = merchant.toUpperCase();
+
+  // Revenue indicators
+  const revenueKeywords = [
+    'PAYMENT', 'CREDIT', 'REFUND', 'RETURN', 'CASH BACK',
+    'CASHBACK', 'REWARD', 'DEPOSIT', 'REIMBURSEMENT',
+    'REVERSAL', 'ADJUSTMENT', 'STATEMENT CREDIT',
+    'ZELLE FROM', 'VENMO FROM', 'PAYPAL FROM', 'WIRE FROM',
+    'ACH CREDIT', 'DIRECT DEPOSIT', 'TRANSFER FROM'
+  ];
+
+  return revenueKeywords.some(keyword => merchantUpper.includes(keyword));
+};
+
+/**
  * Parse transaction text and extract structured data
  * @param {string} text - Extracted text from PDF
  * @returns {Array} Array of transaction objects
@@ -124,17 +144,30 @@ const parseTransactions = (text) => {
 
   console.log(`Parsing ${lines.length} lines for transactions...`);
 
-  // Pattern 1: MM/DD MERCHANT_NAME LOCATION AMOUNT
+  // Pattern 1: DATE DESCRIPTION AMOUNT BALANCE (bank statement format)
+  // Example: "10/27 Zelle From Adrian Hernandez on 10/27 Ref # Baco4Xlol3N9 500.00 9,372.34"
+  // Captures the transaction amount (500.00), not the balance (9,372.34)
+  const pattern1 = /(\d{1,2}\/\d{1,2}(?:\/\d{2,4})?)\s+(.+?)\s+([\d,]+\.\d{2})\s+[\d,]+\.\d{2}\s*$/;
+
+  // Pattern 2: DATE DESCRIPTION -AMOUNT BALANCE (negative amounts with balance)
+  // Example: "10/10 PAYMENT RECEIVED -500.00 9,372.34"
+  const pattern2 = /(\d{1,2}\/\d{1,2}(?:\/\d{2,4})?)\s+(.+?)\s+-\s*([\d,]+\.\d{2})\s+[\d,]+\.\d{2}\s*$/;
+
+  // Pattern 3: MM/DD MERCHANT_NAME LOCATION AMOUNT (credit card format, no balance)
   // Example: "10/10 AMAZON MKTPL*NF2LF3661 Amzn.com/bill WA 38.40"
-  const pattern1 = /(\d{1,2}\/\d{1,2})\s+(.+?)\s+([\d,]+\.\d{2})\s*$/;
+  const pattern3 = /(\d{1,2}\/\d{1,2})\s+(.+?)\s+([\d,]+\.\d{2})\s*$/;
 
-  // Pattern 2: MERCHANT AMOUNT (simpler format)
+  // Pattern 4: MERCHANT AMOUNT (simpler format)
   // Example: "AMAZON 38.40"
-  const pattern2 = /^([A-Z][A-Za-z\s\*\.\-&']+?)\s+([\d,]+\.\d{2})\s*$/;
+  const pattern4 = /^([A-Z][A-Za-z\s\*\.\-&']+?)\s+([\d,]+\.\d{2})\s*$/;
 
-  // Pattern 3: DATE DESCRIPTION AMOUNT (more flexible)
+  // Pattern 5: DATE DESCRIPTION AMOUNT (flexible, no balance)
   // Example: "10/10/2024 Amazon Purchase 38.40"
-  const pattern3 = /(\d{1,2}\/\d{1,2}(?:\/\d{2,4})?)\s+(.+?)\s+([\d,]+\.\d{2})\s*$/;
+  const pattern5 = /(\d{1,2}\/\d{1,2}(?:\/\d{2,4})?)\s+(.+?)\s+([\d,]+\.\d{2})\s*$/;
+
+  // Pattern 6: Negative amounts without balance (credits/payments)
+  // Example: "10/10 PAYMENT RECEIVED -500.00"
+  const pattern6 = /(\d{1,2}\/\d{1,2}(?:\/\d{2,4})?)\s+(.+?)\s+-\s*([\d,]+\.\d{2})\s*$/;
 
   let sampleLines = 0;
   for (const line of lines) {
@@ -151,29 +184,58 @@ const parseTransactions = (text) => {
     let date = null;
     let merchant = null;
     let amount = null;
+    let isCredit = false;
 
-    // Try pattern 1 first (most specific)
+    // Try patterns in order of specificity (most specific first)
+
+    // Try pattern 1 first (bank statement with balance - most specific)
     match = trimmedLine.match(pattern1);
     if (match) {
       date = match[1];
       merchant = match[2];
       amount = match[3];
     } else {
-      // Try pattern 3 (with full date)
-      match = trimmedLine.match(pattern3);
+      // Try pattern 2 (negative amounts with balance)
+      match = trimmedLine.match(pattern2);
       if (match) {
         date = match[1];
         merchant = match[2];
         amount = match[3];
+        isCredit = true;
       } else {
-        // Try pattern 2 (no date)
-        match = trimmedLine.match(pattern2);
+        // Try pattern 6 (negative amounts without balance)
+        match = trimmedLine.match(pattern6);
         if (match) {
-          // Use today's date if no date found
-          const today = new Date();
-          date = `${today.getMonth() + 1}/${today.getDate()}`;
-          merchant = match[1];
-          amount = match[2];
+          date = match[1];
+          merchant = match[2];
+          amount = match[3];
+          isCredit = true;
+        } else {
+          // Try pattern 3 (credit card format)
+          match = trimmedLine.match(pattern3);
+          if (match) {
+            date = match[1];
+            merchant = match[2];
+            amount = match[3];
+          } else {
+            // Try pattern 5 (flexible date format)
+            match = trimmedLine.match(pattern5);
+            if (match) {
+              date = match[1];
+              merchant = match[2];
+              amount = match[3];
+            } else {
+              // Try pattern 4 (no date, simplest format)
+              match = trimmedLine.match(pattern4);
+              if (match) {
+                // Use today's date if no date found
+                const today = new Date();
+                date = `${today.getMonth() + 1}/${today.getDate()}`;
+                merchant = match[1];
+                amount = match[2];
+              }
+            }
+          }
         }
       }
     }
@@ -190,18 +252,25 @@ const parseTransactions = (text) => {
       if (merchant.length < 3) continue;
       if (/^(date|transaction|amount|description|merchant|total|balance|payment|fee)/i.test(merchant)) continue;
 
-      // Auto-detect category based on merchant name
-      const detectedCategory = detectCategory(merchant);
+      // Detect transaction type - revenue or expense
+      const isRevenue = isCredit || isRevenueTransaction(merchant);
+
+      // Auto-detect category based on merchant name (only for expenses)
+      const detectedCategory = isRevenue ? '' : detectCategory(merchant);
 
       transactions.push({
         transaction_date: convertToFullDate(date),
         merchant: merchant,
         amount: parseFloat(amount.replace(/,/g, '')),
-        type: 'expense', // Default to expense for credit card statements
-        category: detectedCategory, // Auto-detected or empty for manual categorization
+        type: isRevenue ? 'revenue' : 'expense',
+        category: detectedCategory, // Auto-detected for expenses or empty for manual categorization
         source: 'pdf_upload',
         description: ''
       });
+
+      if (isRevenue) {
+        console.log(`Detected revenue: ${merchant} - $${amount}`);
+      }
     }
   }
 

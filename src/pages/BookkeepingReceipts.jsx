@@ -1,10 +1,11 @@
 import React, { useState, useEffect } from 'react';
-import { FileImage, Trash2, Eye, DollarSign, Calendar } from 'lucide-react';
+import { FileImage, Trash2, Eye, DollarSign, Calendar, Upload } from 'lucide-react';
 import { supabase } from '../supabaseClient';
 import { useAuth } from '../context/AuthContext';
 
 import Sidebar from '../partials/Sidebar';
 import Header from '../partials/Header';
+import UploadReceiptsModal from '../partials/bookkeeping/UploadReceiptsModal';
 
 function BookkeepingReceipts() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
@@ -12,6 +13,7 @@ function BookkeepingReceipts() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [selectedReceipt, setSelectedReceipt] = useState(null);
+  const [uploadModalOpen, setUploadModalOpen] = useState(false);
 
   const { user, initialized } = useAuth();
 
@@ -137,6 +139,15 @@ function BookkeepingReceipts() {
                   View and manage all uploaded receipt images
                 </p>
               </div>
+              <div className="flex items-center gap-3">
+                <button
+                  onClick={() => setUploadModalOpen(true)}
+                  className="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors shadow-lg flex items-center gap-2"
+                >
+                  <Upload className="w-5 h-5" />
+                  Upload Receipts
+                </button>
+              </div>
             </div>
 
             {/* Error Display */}
@@ -159,8 +170,15 @@ function BookkeepingReceipts() {
                   No receipts uploaded yet
                 </h3>
                 <p className="text-gray-600 dark:text-gray-400 mb-6">
-                  Upload receipts when adding or editing transactions to keep track of your documentation
+                  Click "Upload Receipts" above to upload multiple receipt images and link them to transactions
                 </p>
+                <button
+                  onClick={() => setUploadModalOpen(true)}
+                  className="px-6 py-3 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors shadow-lg inline-flex items-center gap-2"
+                >
+                  <Upload className="w-5 h-5" />
+                  Upload Your First Receipts
+                </button>
               </div>
             ) : (
               // Receipts Grid
@@ -329,6 +347,16 @@ function BookkeepingReceipts() {
           </div>
         </div>
       )}
+
+      {/* Upload Receipts Modal */}
+      <UploadReceiptsModal
+        isOpen={uploadModalOpen}
+        onClose={() => setUploadModalOpen(false)}
+        onUploadComplete={() => {
+          fetchReceipts();
+          setUploadModalOpen(false);
+        }}
+      />
     </div>
   );
 }

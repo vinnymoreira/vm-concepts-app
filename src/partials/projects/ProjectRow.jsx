@@ -6,8 +6,8 @@ import DatePicker from '../../components/Datepicker';
 
 const STATUS_COLORS = {
   open: 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200',
-  in_progress: 'bg-indigo-100 text-indigo-800 dark:bg-indigo-900 dark:text-indigo-200',
-  qa: 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200',
+  in_progress: 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200',
+  qa: 'bg-gray-200 text-gray-800 dark:bg-gray-900 dark:text-gray-200',
   complete: 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200'
 };
 
@@ -93,7 +93,8 @@ function ProjectRow({ project, onUpdate, onDelete }) {
 
     // Handle different field types
     if (field === 'net_income' || field === 'cost') {
-      updatedProject[field] = parseFloat(editValue) || 0;
+      const numValue = parseFloat(editValue);
+      updatedProject[field] = isNaN(numValue) ? 0 : numValue;
     } else if (field === 'payment_received') {
       updatedProject[field] = editValue === 'true';
     } else if (field === 'client_id') {
@@ -265,10 +266,10 @@ function ProjectRow({ project, onUpdate, onDelete }) {
             className={`px-3 py-1 text-xs font-medium rounded-full cursor-pointer transition-colors ${
               project.payment_received
                 ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200'
-                : 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200'
+                : 'bg-gray-100 text-gray-800 dark:bg-gray-900 dark:text-gray-200'
             }`}
           >
-            {project.payment_received ? '✓ Yes' : '✗ No'}
+            {project.payment_received ? '✓ Yes' : 'No'}
           </button>
         </td>
 
@@ -290,7 +291,7 @@ function ProjectRow({ project, onUpdate, onDelete }) {
               onClick={() => startEditing('net_income', project.net_income)}
               className="text-sm font-medium text-gray-900 dark:text-gray-100 cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-600 px-2 py-1 rounded"
             >
-              {project.payment_received ? formatCurrency(project.net_income) : formatCurrency(0)}
+              {formatCurrency(project.net_income)}
             </div>
           )}
         </td>
@@ -321,7 +322,7 @@ function ProjectRow({ project, onUpdate, onDelete }) {
         {/* Profit (auto-calculated) */}
         <td className="px-4 py-3 whitespace-nowrap text-right">
           <div className="text-sm font-medium text-gray-900 dark:text-gray-100">
-            {project.payment_received ? formatCurrency(project.profit) : formatCurrency(0)}
+            {formatCurrency(project.profit)}
           </div>
         </td>
 

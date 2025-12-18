@@ -183,8 +183,45 @@ function BookkeepingReports() {
   ];
 
   // Colors for charts
-  const EXPENSE_COLORS = ['#ef4444', '#f97316', '#f59e0b', '#eab308', '#84cc16', '#22c55e', '#10b981', '#14b8a6', '#06b6d4', '#0ea5e9', '#3b82f6', '#6366f1', '#8b5cf6', '#a855f7'];
-  const REVENUE_COLORS = ['#10b981', '#14b8a6', '#06b6d4', '#0ea5e9'];
+  const EXPENSE_COLORS = [
+    '#EF4444',
+    '#F97316',
+    '#F59E0B',
+    '#EAB308',
+    '#84CC16',
+    '#22C55E',
+    '#06B6D4',
+    '#0EA5E9',
+    '#3B82F6',
+    '#6366F1',
+    '#8B5CF6',
+    '#A855F7',
+    '#EC4899',
+    '#F43F5E',
+  ];
+  
+  const REVENUE_COLORS = [
+    '#22C55E',
+    '#10B981',
+    '#06B6D4',
+    '#3B82F6',
+  ];
+
+  const SPREAD_COLORS = (colors) => {
+    const result = [];
+    const mid = Math.ceil(colors.length / 2);
+
+    for (let i = 0; i < mid; i++) {
+      result.push(colors[i]);
+      if (colors[i + mid]) result.push(colors[i + mid]);
+    }
+
+    return result;
+  };
+
+  const EXPENSE_COLORS_SPREAD = SPREAD_COLORS(EXPENSE_COLORS);
+
+
 
   // Export functions
   const exportToCSV = (type) => {
@@ -432,6 +469,7 @@ function BookkeepingReports() {
                             cy="50%"
                             outerRadius={120}
                             fill="#8884d8"
+                            paddingAngle={1}
                             dataKey="value"
                             label={({ name, percent }) => `${name}: ${(percent * 100).toFixed(0)}%`}
                             labelLine={true}
@@ -465,13 +503,14 @@ function BookkeepingReports() {
                             cy="50%"
                             outerRadius={120}
                             fill="#8884d8"
+                            paddingAngle={1}
                             dataKey="value"
                             label={({ name, percent }) => `${name}: ${(percent * 100).toFixed(0)}%`}
                             labelLine={true}
                             style={{ fontSize: '11px' }}
                           >
                             {expensePieData.map((entry, index) => (
-                              <Cell key={`cell-${index}`} fill={EXPENSE_COLORS[index % EXPENSE_COLORS.length]} />
+                              <Cell key={`expense-cell-${index}`} fill={EXPENSE_COLORS_SPREAD[index % EXPENSE_COLORS_SPREAD.length]} />
                             ))}
                           </Pie>
                           <Tooltip formatter={(value) => formatCurrency(value)} />

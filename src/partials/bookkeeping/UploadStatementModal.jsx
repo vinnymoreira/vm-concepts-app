@@ -130,6 +130,30 @@ function UploadStatementModal({ isOpen, onClose, onImportComplete, categories })
     setExtractedTransactions(prev => prev.filter((_, i) => i !== index));
   };
 
+  const handleCreateCategory = async (categoryName, type) => {
+    if (!user || !categoryName.trim()) return;
+
+    try {
+      const { data, error } = await supabase
+        .from('bookkeeping_categories')
+        .insert([{
+          user_id: user.id,
+          name: categoryName.trim(),
+          type: type
+        }])
+        .select()
+        .single();
+
+      if (error) throw error;
+
+      // Notify parent to refresh categories
+      onImportComplete();
+    } catch (err) {
+      console.error('Error creating category:', err);
+      setError(err.message || 'Failed to create category');
+    }
+  };
+
   const handleImport = async () => {
     if (!user || extractedTransactions.length === 0) return;
 
@@ -231,7 +255,10 @@ function UploadStatementModal({ isOpen, onClose, onImportComplete, categories })
 
   if (!isOpen) return null;
 
-  const expenseCategories = categories.filter(c => c.type === 'expense');
+  // Get categories by type
+  const getCategoriesForType = (type) => {
+    return categories.filter(c => c.type === type).map(cat => cat.name);
+  };
 
   return (
     <div
@@ -345,6 +372,7 @@ function UploadStatementModal({ isOpen, onClose, onImportComplete, categories })
                     <tr>
                       <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">Date</th>
                       <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">Merchant</th>
+                      <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">Type</th>
                       <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">Category</th>
                       <th className="px-3 py-2 text-right text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">Amount</th>
                       <th className="px-3 py-2 text-center text-xs font-medium text-gray-500 dark:text-gray-400 uppercase w-16"></th>
@@ -365,17 +393,36 @@ function UploadStatementModal({ isOpen, onClose, onImportComplete, categories })
                           />
                         </td>
                         <td className="px-3 py-2 text-sm">
+                          <select
+                            value={transaction.type}
+                            onChange={(e) => {
+                              updateTransaction(index, 'type', e.target.value);
+                              // Clear category when type changes
+                              updateTransaction(index, 'category', '');
+                            }}
+                            className="w-full px-2 py-1 border border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 text-sm"
+                          >
+                            <option value="expense">Expense</option>
+                            <option value="revenue">Revenue</option>
+                          </select>
+                        </td>
+                        <td className="px-3 py-2 text-sm">
                           <CategoryAutocomplete
                             value={transaction.category}
                             onChange={(value) => updateTransaction(index, 'category', value)}
-                            categories={expenseCategories.map(cat => cat.name)}
+                            categories={getCategoriesForType(transaction.type)}
                             placeholder="Type to search..."
                             error={!transaction.category}
                             className="text-sm py-1"
+                            onCreateCategory={(categoryName) => handleCreateCategory(categoryName, transaction.type)}
                           />
                         </td>
-                        <td className="px-3 py-2 text-sm text-right font-semibold text-gray-900 dark:text-gray-100 whitespace-nowrap">
-                          ${transaction.amount.toFixed(2)}
+                        <td className={`px-3 py-2 text-sm text-right font-semibold whitespace-nowrap ${
+                          transaction.type === 'revenue'
+                            ? 'text-green-600 dark:text-green-400'
+                            : 'text-gray-900 dark:text-gray-100'
+                        }`}>
+                          {transaction.type === 'revenue' ? '+' : ''}${transaction.amount.toFixed(2)}
                         </td>
                         <td className="px-3 py-2 text-center">
                           <button

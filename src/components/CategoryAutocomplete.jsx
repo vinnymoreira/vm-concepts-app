@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { ChevronDown } from 'lucide-react';
+import { ChevronDown, Plus } from 'lucide-react';
 
 function CategoryAutocomplete({
   value,
@@ -7,7 +7,8 @@ function CategoryAutocomplete({
   categories,
   placeholder = 'Select or type to search...',
   className = '',
-  error = false
+  error = false,
+  onCreateCategory = null // Optional callback to create new category
 }) {
   const [isOpen, setIsOpen] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
@@ -22,6 +23,11 @@ function CategoryAutocomplete({
   const filteredCategories = categories.filter(cat =>
     cat.toLowerCase().includes(searchTerm.toLowerCase())
   );
+
+  // Check if we should show "Create new" option
+  const showCreateOption = onCreateCategory &&
+    searchTerm.trim().length > 0 &&
+    !categories.some(cat => cat.toLowerCase() === searchTerm.toLowerCase());
 
   // Close dropdown when clicking outside
   useEffect(() => {
@@ -62,6 +68,18 @@ function CategoryAutocomplete({
     inputRef.current?.blur();
   };
 
+  const handleCreateCategory = async () => {
+    if (!onCreateCategory || !searchTerm.trim()) return;
+
+    const newCategory = searchTerm.trim();
+    await onCreateCategory(newCategory);
+    onChange(newCategory);
+    setSearchTerm('');
+    setIsOpen(false);
+    setHighlightedIndex(-1);
+    inputRef.current?.blur();
+  };
+
   const handleKeyDown = (e) => {
     if (!isOpen && (e.key === 'ArrowDown' || e.key === 'ArrowUp' || e.key === 'Enter')) {
       setIsOpen(true);
@@ -70,11 +88,13 @@ function CategoryAutocomplete({
 
     if (!isOpen) return;
 
+    const totalOptions = filteredCategories.length + (showCreateOption ? 1 : 0);
+
     switch (e.key) {
       case 'ArrowDown':
         e.preventDefault();
         setHighlightedIndex(prev =>
-          prev < filteredCategories.length - 1 ? prev + 1 : prev
+          prev < totalOptions - 1 ? prev + 1 : prev
         );
         break;
 
@@ -87,8 +107,12 @@ function CategoryAutocomplete({
         e.preventDefault();
         if (highlightedIndex >= 0 && highlightedIndex < filteredCategories.length) {
           handleSelectCategory(filteredCategories[highlightedIndex]);
+        } else if (highlightedIndex === filteredCategories.length && showCreateOption) {
+          handleCreateCategory();
         } else if (filteredCategories.length === 1) {
           handleSelectCategory(filteredCategories[0]);
+        } else if (showCreateOption && filteredCategories.length === 0) {
+          handleCreateCategory();
         }
         break;
 
@@ -146,26 +170,41 @@ function CategoryAutocomplete({
           ref={dropdownRef}
           className="absolute z-10 w-full mt-1 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg shadow-lg max-h-60 overflow-y-auto"
         >
-          {filteredCategories.length === 0 ? (
+          {filteredCategories.length === 0 && !showCreateOption ? (
             <div className="px-3 py-2 text-sm text-gray-500 dark:text-gray-400">
               No categories found
             </div>
           ) : (
-            filteredCategories.map((category, index) => (
-              <div
-                key={category}
-                onClick={() => handleSelectCategory(category)}
-                className={`px-3 py-2 cursor-pointer text-sm transition-colors ${
-                  index === highlightedIndex
-                    ? 'bg-indigo-500 text-white'
-                    : value === category
-                    ? 'bg-indigo-50 dark:bg-indigo-900/20 text-indigo-600 dark:text-indigo-400'
-                    : 'text-gray-900 dark:text-gray-100 hover:bg-gray-100 dark:hover:bg-gray-600'
-                }`}
-              >
-                {category}
-              </div>
-            ))
+            <>
+              {filteredCategories.map((category, index) => (
+                <div
+                  key={category}
+                  onClick={() => handleSelectCategory(category)}
+                  className={`px-3 py-2 cursor-pointer text-sm transition-colors ${
+                    index === highlightedIndex
+                      ? 'bg-indigo-500 text-white'
+                      : value === category
+                      ? 'bg-indigo-50 dark:bg-indigo-900/20 text-indigo-600 dark:text-indigo-400'
+                      : 'text-gray-900 dark:text-gray-100 hover:bg-gray-100 dark:hover:bg-gray-600'
+                  }`}
+                >
+                  {category}
+                </div>
+              ))}
+              {showCreateOption && (
+                <div
+                  onClick={handleCreateCategory}
+                  className={`px-3 py-2 cursor-pointer text-sm transition-colors flex items-center gap-2 ${
+                    highlightedIndex === filteredCategories.length
+                      ? 'bg-indigo-500 text-white'
+                      : 'text-indigo-600 dark:text-indigo-400 hover:bg-indigo-50 dark:hover:bg-indigo-900/20'
+                  } ${filteredCategories.length > 0 ? 'border-t border-gray-200 dark:border-gray-600' : ''}`}
+                >
+                  <Plus className="w-4 h-4" />
+                  <span>Create "{searchTerm}"</span>
+                </div>
+              )}
+            </>
           )}
         </div>
       )}
