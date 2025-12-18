@@ -384,9 +384,9 @@ function Projects() {
                     <select
                       value={statusFilter}
                       onChange={(e) => setStatusFilter(e.target.value)}
-                      className=""
+                      className="pl-10 pr-8 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 dark:bg-gray-700 dark:text-white appearance-none bg-white dark:bg-gray-700"
                     >
-                      <option value="all">All Status</option>
+                      <option value="all">All Statuses</option>
                       <option value="open">Open</option>
                       <option value="in_progress">In Progress</option>
                       <option value="qa">QA</option>

@@ -123,11 +123,11 @@ const isRevenueTransaction = (merchant) => {
 
   // Revenue indicators
   const revenueKeywords = [
-    'PAYMENT', 'CREDIT', 'REFUND', 'RETURN', 'CASH BACK',
+    'CREDIT', 'REFUND', 'RETURN', 'CASH BACK',
     'CASHBACK', 'REWARD', 'DEPOSIT', 'REIMBURSEMENT',
     'REVERSAL', 'ADJUSTMENT', 'STATEMENT CREDIT',
-    'ZELLE FROM', 'VENMO FROM', 'PAYPAL FROM', 'WIRE FROM',
-    'ACH CREDIT', 'DIRECT DEPOSIT', 'TRANSFER FROM'
+    'ZELLE FROM', 'VENMO CASHOUT', 'PAYPAL FROM', 'WIRE FROM',
+    'ACH CREDIT', 'DIRECT DEPOSIT', 'DIR DEP', ' DIRECT PAY', 'TRANSFER FROM'
   ];
 
   return revenueKeywords.some(keyword => merchantUpper.includes(keyword));
