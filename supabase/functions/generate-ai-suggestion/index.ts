@@ -59,6 +59,10 @@ serve(async (req) => {
       case 'brainstorm':
         userPrompt = `Provide 3-5 creative ideas based on:\n\n${existingContent}\n\nIMPORTANT: Start your response directly with the ideas. Do not write any introductory phrases.`
         break
+      case 'portuguese-accents':
+        systemPrompt = 'You are a Brazilian Portuguese language expert. Your ONLY task is to add proper accents and special characters to Portuguese text. CRITICAL: Return ONLY the corrected text with proper accents. Do NOT add explanations, comments, or any other text.'
+        userPrompt = `Add the proper Portuguese accents and special characters to this text. Return ONLY the corrected text, nothing else:\n\n${existingContent}\n\nIMPORTANT: Return ONLY the text with accents. Do not write "Here's the corrected version" or any explanation. Just the corrected text itself.`
+        break
       default:
         userPrompt = `Suggest how to continue or improve:\n\n${existingContent}\n\nIMPORTANT: Start your response directly with the suggested content. Do not write any introductory phrases.`
     }

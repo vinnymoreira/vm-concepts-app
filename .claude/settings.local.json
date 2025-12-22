@@ -6,7 +6,11 @@
       "Skill(frontend-design)",
       "Bash(grep:*)",
       "Bash(npm install:*)",
-      "Bash(supabase --version:*)"
+      "Bash(supabase --version:*)",
+      "Bash(psql $DATABASE_URL -c \"\\\\d notes\")",
+      "Bash(npm run build:*)",
+      "Bash(psql:*)",
+      "Bash(npm run dev:*)"
     ]
   },
   "hooks": {

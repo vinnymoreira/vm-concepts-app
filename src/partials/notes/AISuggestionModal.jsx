@@ -9,13 +9,6 @@ function AISuggestionModal({ isOpen, onClose, onApplySuggestion, onGenerateSugge
   const suggestion = externalSuggestion || '';
   const loading = externalLoading || false;
 
-  // Auto-generate on mount if modal opens
-  useEffect(() => {
-    if (isOpen && !suggestion && !loading) {
-      onGenerateSuggestion(suggestionType);
-    }
-  }, [isOpen]);
-
   if (!isOpen) return null;
 
   const suggestionTypes = [
@@ -23,6 +16,7 @@ function AISuggestionModal({ isOpen, onClose, onApplySuggestion, onGenerateSugge
     { value: 'expand', label: 'Expand Ideas', description: 'Add more detail and elaboration' },
     { value: 'rewrite', label: 'Rewrite', description: 'Rewrite in a different way' },
     { value: 'brainstorm', label: 'Brainstorm', description: 'Get new ideas and directions' },
+    { value: 'portuguese-accents', label: 'Add Portuguese Accents', description: 'Add proper accents to Brazilian Portuguese text' },
   ];
 
   const handleCopy = () => {
@@ -73,7 +67,7 @@ function AISuggestionModal({ isOpen, onClose, onApplySuggestion, onGenerateSugge
             {/* Suggestion Type Selection */}
             <div>
               <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                What would you like help with?
+                Choose what you need:
               </label>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                 {suggestionTypes.map((type) => (
@@ -85,9 +79,9 @@ function AISuggestionModal({ isOpen, onClose, onApplySuggestion, onGenerateSugge
                     }}
                     disabled={loading}
                     className={`p-3 text-left rounded-lg border-2 transition-all disabled:opacity-50 disabled:cursor-not-allowed ${
-                      suggestionType === type.value
+                      suggestionType === type.value && suggestion
                         ? 'border-violet-500 bg-violet-50 dark:bg-violet-900/20'
-                        : 'border-gray-200 dark:border-gray-700 hover:border-gray-300 dark:hover:border-gray-600'
+                        : 'border-gray-200 dark:border-gray-700 hover:border-violet-300 dark:hover:border-violet-600'
                     }`}
                   >
                     <div className="font-medium text-sm text-gray-900 dark:text-gray-100">

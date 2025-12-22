@@ -3,11 +3,12 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { supabase } from '../supabaseClient';
 import Sidebar from '../partials/Sidebar';
 import Header from '../partials/Header';
-import { ArrowLeft, Star, Trash2, Folder, Calendar, Sparkles } from 'lucide-react';
+import { ArrowLeft, Star, Trash2, Folder, Calendar, Sparkles, Paperclip } from 'lucide-react';
 import { format } from 'date-fns';
 import { useAuth } from '../context/AuthContext';
 import TiptapEditor from '../partials/notes/TiptapEditor';
 import AISuggestionModal from '../partials/notes/AISuggestionModal';
+import AttachmentsModal from '../partials/notes/AttachmentsModal';
 import { generateContentSuggestion } from '../utils/aiSuggestions';
 import debounce from '../utils/debounce';
 
@@ -29,6 +30,8 @@ function NoteEditor() {
   const [isAIModalOpen, setIsAIModalOpen] = useState(false);
   const [aiLoading, setAiLoading] = useState(false);
   const [aiSuggestion, setAiSuggestion] = useState('');
+  const [attachments, setAttachments] = useState([]);
+  const [isAttachmentsModalOpen, setIsAttachmentsModalOpen] = useState(false);
 
   // Fetch note data
   useEffect(() => {
@@ -107,6 +110,32 @@ function NoteEditor() {
 
     fetchCategories();
   }, [user]);
+
+  // Fetch attachments
+  const fetchAttachments = async () => {
+    if (!user) return;
+
+    try {
+      const { data, error } = await supabase
+        .from('note_attachments')
+        .select('*')
+        .eq('note_id', id)
+        .eq('user_id', user.id)
+        .order('created_at', { ascending: true });
+
+      if (error) throw error;
+
+      setAttachments(data || []);
+    } catch (err) {
+      console.error('Error fetching attachments:', err);
+    }
+  };
+
+  useEffect(() => {
+    if (user && id) {
+      fetchAttachments();
+    }
+  }, [user, id]);
 
   // Auto-save function (debounced)
   const saveNote = useCallback(
@@ -271,6 +300,14 @@ function NoteEditor() {
     setAiSuggestion('');
   };
 
+  const handleFileUploaded = (attachment) => {
+    setAttachments(prev => [...prev, attachment]);
+  };
+
+  const handleAttachmentDeleted = (attachmentId) => {
+    setAttachments(prev => prev.filter(att => att.id !== attachmentId));
+  };
+
   if (authLoading || loading) {
     return (
       <div className="flex h-screen overflow-hidden">
@@ -360,6 +397,19 @@ function NoteEditor() {
                   ))}
                 </select>
 
+                {/* Attachments button */}
+                <button
+                  type="button"
+                  onClick={() => setIsAttachmentsModalOpen(true)}
+                  className="btn bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700/60 hover:border-gray-300 dark:hover:border-gray-600 text-gray-600 dark:text-gray-300"
+                  title="Attachments"
+                >
+                  <Paperclip className="w-4 h-4" />
+                  {attachments.length > 0 && (
+                    <span className="ml-1 text-xs">({attachments.length})</span>
+                  )}
+                </button>
+
                 {/* Favorite button */}
                 <button
                   onClick={handleToggleFavorite}
@@ -432,6 +482,16 @@ function NoteEditor() {
         suggestion={aiSuggestion}
         loading={aiLoading}
         categoryName={categories.find(cat => cat.id === note?.category_id)?.name}
+      />
+
+      {/* Attachments Modal */}
+      <AttachmentsModal
+        isOpen={isAttachmentsModalOpen}
+        onClose={() => setIsAttachmentsModalOpen(false)}
+        noteId={id}
+        attachments={attachments}
+        onFileUploaded={handleFileUploaded}
+        onAttachmentDeleted={handleAttachmentDeleted}
       />
     </div>
   );
